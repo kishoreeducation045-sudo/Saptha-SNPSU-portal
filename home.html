@@ -60,6 +60,7 @@
             position: relative;
             z-index: 2;
             max-width: 850px;
+            width: min(850px, 100%);
         }
 
         .hero-content h2 {
@@ -72,6 +73,13 @@
             font-size: 18px;
             opacity: .95;
             margin-bottom: 26px;
+        }
+
+        .hero-content .cta {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
         /* ---------- CARDS ---------- */
@@ -114,14 +122,30 @@
         }
 
         @media(max-width:600px) {
+            .hero-content {
+                padding: 0 14px;
+            }
+
             .hero-content h2 {
-                font-size: clamp(20px, 6vw, 28px);
+                font-size: clamp(17px, 5.5vw, 24px);
+                line-height: 1.15;
                 margin-bottom: 8px;
             }
 
             .hero-content p {
-                font-size: 13px;
+                font-size: clamp(11px, 3.2vw, 13px);
+                line-height: 1.25;
                 margin-bottom: 12px;
+            }
+
+            .hero-content .cta {
+                gap: 6px;
+            }
+
+            .hero-content .btn {
+                padding: 8px 11px;
+                font-size: 11px;
+                white-space: nowrap;
             }
         }
 
