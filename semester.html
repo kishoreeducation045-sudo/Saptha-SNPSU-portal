@@ -24,6 +24,23 @@
   z-index: 99999;
   box-shadow: 0 4px 12px rgba(0,0,0,0.25);
 }
+.subject-dialog{
+    width:min(460px, calc(100% - 32px));
+    border:0;
+    border-radius:10px;
+    padding:24px;
+    box-shadow:0 18px 55px rgba(0,0,0,0.25);
+}
+.subject-dialog::backdrop{background:rgba(15,25,40,0.48)}
+.subject-form{display:grid;gap:14px}
+.subject-form label{display:grid;gap:6px;font-weight:600;font-size:14px;color:#333}
+.subject-form input,.subject-form textarea{
+    width:100%;padding:10px;border:1px solid #ccd2dc;border-radius:6px;
+    font:inherit;box-sizing:border-box;
+}
+.subject-form textarea{min-height:90px;resize:vertical}
+.subject-form-actions{display:flex;justify-content:flex-end;gap:10px}
+.subject-status{min-height:20px;margin:0;color:#555;font-size:13px}
 </style>
 
 </head>
@@ -37,6 +54,11 @@
 <script>
 const u = requireAuth();
 renderHeader("departments.html");
+if (u?.role === "course_coordinator") {
+    document.body.insertAdjacentHTML("beforeend", `
+        <button class="add-btn" id="addSubjectOpen" type="button" aria-label="Add subject">+</button>
+    `);
+}
 </script>
 
 <section>
@@ -51,6 +73,23 @@ renderHeader("departments.html");
 
 </div>
 </section>
+
+<dialog class="subject-dialog" id="addSubjectDialog" aria-labelledby="addSubjectTitle">
+    <form class="subject-form" id="addSubjectForm">
+        <h3 id="addSubjectTitle">Add Subject · Semester <span id="subjectSemesterLabel"></span></h3>
+        <label for="newSubjectName">Subject name
+            <input id="newSubjectName" type="text" required maxlength="80">
+        </label>
+        <label for="newSubjectDescription">Description
+            <textarea id="newSubjectDescription" maxlength="300"></textarea>
+        </label>
+        <p class="subject-status" id="addSubjectStatus" role="status" aria-live="polite"></p>
+        <div class="subject-form-actions">
+            <button class="btn sm" id="addSubjectCancel" type="button">Cancel</button>
+            <button class="btn sm" id="addSubjectSubmit" type="submit">Add Subject</button>
+        </div>
+    </form>
+</dialog>
 
 <script>
 const q = new URLSearchParams(location.search);
@@ -71,6 +110,55 @@ async function loadSubjects(){
         id: item.id,
         ...item.data
     }));
+}
+
+const addSubjectOpen = document.getElementById("addSubjectOpen");
+const addSubjectDialog = document.getElementById("addSubjectDialog");
+const addSubjectStatus = document.getElementById("addSubjectStatus");
+const addSubjectSubmit = document.getElementById("addSubjectSubmit");
+document.getElementById("subjectSemesterLabel").textContent = sem;
+
+if (addSubjectOpen) {
+    addSubjectOpen.addEventListener("click", () => {
+        if (u?.role !== "course_coordinator") return;
+        document.getElementById("addSubjectForm").reset();
+        addSubjectStatus.textContent = "";
+        addSubjectDialog.showModal();
+    });
+
+    document.getElementById("addSubjectCancel").addEventListener("click", () => addSubjectDialog.close());
+
+    document.getElementById("addSubjectForm").addEventListener("submit", async event => {
+        event.preventDefault();
+        if (u?.role !== "course_coordinator") return;
+
+        const name = document.getElementById("newSubjectName").value.trim();
+        const desc = document.getElementById("newSubjectDescription").value.trim();
+        if (!name) return;
+        if (subjects.some(subject => subject.name.toLowerCase() === name.toLowerCase())) {
+            addSubjectStatus.textContent = "That subject already exists for this semester.";
+            return;
+        }
+
+        addSubjectSubmit.disabled = true;
+        addSubjectStatus.textContent = "Adding subject...";
+        try {
+            await apiCreate("subjects", {
+                name,
+                desc,
+                branch,
+                sem: String(sem),
+                scope
+            });
+            await loadSubjects();
+            render();
+            addSubjectDialog.close();
+        } catch (error) {
+            addSubjectStatus.textContent = error.message || "Could not add the subject.";
+        } finally {
+            addSubjectSubmit.disabled = false;
+        }
+    });
 }
 
 
