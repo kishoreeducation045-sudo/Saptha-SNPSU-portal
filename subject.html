@@ -21,6 +21,24 @@
   z-index:99999;
   box-shadow:0 4px 12px rgba(0,0,0,0.25);
 }
+.upload-dialog{
+  width:min(520px, calc(100% - 32px));
+  padding:0;
+  border:0;
+  border-radius:10px;
+  box-shadow:0 18px 55px rgba(0,0,0,0.25);
+}
+.upload-dialog::backdrop{background:rgba(15,25,40,0.48)}
+.upload-form{padding:24px;display:grid;gap:14px}
+.upload-form h3{margin:0;color:#0b3d91}
+.upload-form label{display:grid;gap:6px;font-weight:600;font-size:14px;color:#333}
+.upload-form select,.upload-form input[type="file"]{
+  width:100%;padding:10px;border:1px solid #ccd2dc;border-radius:6px;background:#fff;
+  font:inherit;box-sizing:border-box;
+}
+.upload-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
+.upload-status{min-height:20px;margin:0;color:#555;font-size:13px}
+.upload-close{border:0;background:transparent;font-size:24px;line-height:1;cursor:pointer;color:#555}
 </style>
 </head>
 
@@ -32,6 +50,11 @@
 <script>
 const u = requireAuth();
 renderHeader("departments.html");
+if (u?.role === "course_coordinator") {
+  document.body.insertAdjacentHTML("beforeend", `
+    <button class="add-btn" id="uploadOpen" type="button" aria-label="Upload notes or files">+</button>
+  `);
+}
 </script>
 
 <section>
@@ -52,6 +75,32 @@ renderHeader("departments.html");
 
 </div>
 </section>
+
+<dialog class="upload-dialog" id="uploadDialog" aria-labelledby="uploadTitle">
+  <form class="upload-form" id="uploadForm">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+      <h3 id="uploadTitle">Upload notes or files</h3>
+      <button class="upload-close" id="uploadClose" type="button" aria-label="Close">&times;</button>
+    </div>
+    <label for="uploadYear">Year / Engineering
+      <select id="uploadYear" required></select>
+    </label>
+    <label for="uploadSubject">Subject
+      <select id="uploadSubject" required></select>
+    </label>
+    <label for="uploadModule">Module
+      <select id="uploadModule" required></select>
+    </label>
+    <label for="uploadFile">File
+      <input id="uploadFile" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.rtf,.png,.jpg,.jpeg" required>
+    </label>
+    <p class="upload-status" id="uploadStatus" role="status" aria-live="polite"></p>
+    <div class="upload-actions">
+      <button class="btn sm" id="uploadCancel" type="button">Cancel</button>
+      <button class="btn sm" id="uploadSubmit" type="submit">Upload</button>
+    </div>
+  </form>
+</dialog>
 
 <script>
 const q = new URLSearchParams(location.search);
@@ -128,6 +177,150 @@ async function download(id){
   a.href = f.data;
   a.download = f.name;
   a.click();
+}
+
+const uploadDialog = document.getElementById("uploadDialog");
+const uploadButton = document.getElementById("uploadOpen");
+const uploadYear = document.getElementById("uploadYear");
+const uploadSubject = document.getElementById("uploadSubject");
+const uploadModule = document.getElementById("uploadModule");
+const uploadStatus = document.getElementById("uploadStatus");
+const uploadSubmit = document.getElementById("uploadSubmit");
+let uploadSubjects = [];
+let uploadModules = [];
+
+function replaceOptions(select, placeholder, options){
+  select.replaceChildren(new Option(placeholder, ""));
+  options.forEach(option => select.add(option));
+}
+
+function subjectSemester(record){
+  const match = String(record.scope || "").match(/^CSE_(\d+)(?:_|$)/);
+  return Number(record.sem ?? record.semester ?? (match && match[1]));
+}
+
+async function populateUploadSubjects(){
+  const year = Number(uploadYear.value);
+  const firstSemester = (year - 1) * 2 + 1;
+  const choices = uploadSubjects
+    .map((record, index) => ({record, index}))
+    .filter(({record}) => record.sem >= firstSemester && record.sem <= firstSemester + 1);
+
+  replaceOptions(uploadSubject, choices.length ? "Select a subject" : "No subjects for this year", choices.map(({record, index}) =>
+    new Option(`Semester ${record.sem} · ${record.name}`, String(index))
+  ));
+
+  const currentIndex = choices.find(({record}) => record.sem === Number(sem) && record.name === subject)?.index;
+  if(currentIndex !== undefined) uploadSubject.value = String(currentIndex);
+  await populateUploadModules();
+}
+
+async function populateUploadModules(){
+  const subjectIndex = uploadSubject.value === "" ? -1 : Number(uploadSubject.value);
+  const record = uploadSubjects[subjectIndex];
+  uploadModules = [];
+  if(!record){
+    replaceOptions(uploadModule, "Select a subject first", []);
+    return;
+  }
+
+  const scope = `CSE_${record.sem}_${record.name}`;
+  const rawModules = await apiList("modules", scope);
+  uploadModules = rawModules
+    .map(item => ({...(item.data || item), id: item.id}))
+    .filter(module => module.title);
+
+  replaceOptions(uploadModule, uploadModules.length ? "Select a module" : "No existing modules", uploadModules.map(module =>
+    new Option(module.title, module.id)
+  ));
+}
+
+async function loadUploadChoices(){
+  const rawSubjects = await apiList("subjects");
+  uploadSubjects = rawSubjects
+    .map(item => {
+      const record = item.data || item;
+      return {...record, sem: subjectSemester(record)};
+    })
+    .filter(record => record.name && Number.isInteger(record.sem) && record.sem >= 1 && record.sem <= 8)
+    .sort((a, b) => a.sem - b.sem || a.name.localeCompare(b.name));
+
+  const years = [...new Set(uploadSubjects.map(record => Math.ceil(record.sem / 2)))];
+  if(!years.length) throw new Error("No existing subjects are available to upload to.");
+
+  replaceOptions(uploadYear, "Select a year", years.map(year => {
+    const suffix = year === 1 ? "st" : year === 2 ? "nd" : year === 3 ? "rd" : "th";
+    return new Option(`${year}${suffix} Year Engineering (CSE)`, String(year));
+  }));
+
+  const currentYear = Math.ceil(Number(sem) / 2);
+  uploadYear.value = years.includes(currentYear) ? String(currentYear) : String(years[0]);
+  await populateUploadSubjects();
+}
+
+if(uploadButton){
+  uploadButton.addEventListener("click", async () => {
+    if(u.role !== "course_coordinator") return;
+    uploadDialog.showModal();
+    uploadStatus.textContent = "Loading existing subjects and modules...";
+    try{
+      await loadUploadChoices();
+      uploadStatus.textContent = "";
+    }catch(error){
+      uploadStatus.textContent = error.message;
+    }
+  });
+
+  uploadYear.addEventListener("change", () => {
+    populateUploadSubjects().catch(error => { uploadStatus.textContent = error.message; });
+  });
+  uploadSubject.addEventListener("change", () => {
+    populateUploadModules().catch(error => { uploadStatus.textContent = error.message; });
+  });
+
+  document.getElementById("uploadClose").addEventListener("click", () => uploadDialog.close());
+  document.getElementById("uploadCancel").addEventListener("click", () => uploadDialog.close());
+
+  document.getElementById("uploadForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    if(u.role !== "course_coordinator") return;
+
+    const subjectIndex = uploadSubject.value === "" ? -1 : Number(uploadSubject.value);
+    const selectedSubject = uploadSubjects[subjectIndex];
+    const selectedModule = uploadModules.find(module => module.id === uploadModule.value);
+    const file = document.getElementById("uploadFile").files[0];
+    if(!selectedSubject || !selectedModule || !file){
+      uploadStatus.textContent = "Select an existing subject, module, and file.";
+      return;
+    }
+
+    uploadSubmit.disabled = true;
+    uploadStatus.textContent = "Uploading...";
+    try{
+      const targetScope = `CSE_${selectedSubject.sem}_${selectedSubject.name}`;
+      await apiCreate("module_files", {
+        scope: targetScope,
+        name: file.name,
+        size: file.size,
+        data: await fileToBase64(file),
+        moduleId: selectedModule.id,
+        subject: selectedSubject.name,
+        date: new Date().toLocaleDateString()
+      });
+
+      uploadDialog.close();
+      if(Number(sem) === selectedSubject.sem && subject === selectedSubject.name){
+        await loadSubjectData();
+        await render();
+      }else{
+        location.href = `subject.html?sem=${selectedSubject.sem}&s=${encodeURIComponent(selectedSubject.name)}`;
+      }
+    }catch(error){
+      uploadStatus.textContent = error.message;
+    }finally{
+      uploadSubmit.disabled = false;
+    }
+  });
 }
 
 loadSubjectData().then(render).catch(err => alert(err.message));
