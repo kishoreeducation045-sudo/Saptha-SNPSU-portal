@@ -9,9 +9,6 @@
 </head>
 
 <body>
-
-<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
 <script src="script.js"></script>
 <script>
 const u = requireAuth();
@@ -60,10 +57,10 @@ function render(){
     items.forEach(p=>{
         box.insertAdjacentHTML("beforeend",`
             <div class="card">
-                <span class="tag">${p.status}</span>
-                <h4>${p.company}</h4>
-                <small>${p.details}</small>
-                <p style="margin-top:8px">${p.role}</p>
+                <span class="tag">${escapeHTMLValue(p.status)}</span>
+                <h4>${escapeHTMLValue(p.company)}</h4>
+                <small>${escapeHTMLValue(p.details)}</small>
+                <p style="margin-top:8px">${escapeHTMLValue(p.role)}</p>
             </div>
         `);
     });

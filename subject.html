@@ -43,9 +43,6 @@
 </head>
 
 <body>
-
-<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
 <script src="script.js"></script>
 <script>
 const u = requireAuth();
@@ -71,6 +68,7 @@ if (u?.role === "course_coordinator") {
     <span class="tag" id="roleTag">Student</span>
   </div>
 
+  <button class="btn sm" id="moduleCreateOpen" type="button" style="display:none;margin:0 0 16px;">Add Module</button>
   <div class="grid cols-2" id="mods"></div>
 
 </div>
@@ -102,9 +100,29 @@ if (u?.role === "course_coordinator") {
   </form>
 </dialog>
 
+<dialog class="upload-dialog" id="moduleCreateDialog" aria-labelledby="moduleCreateTitle">
+  <form class="upload-form" id="moduleCreateForm">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+      <h3 id="moduleCreateTitle">Add Module</h3>
+      <button class="upload-close" id="moduleCreateClose" type="button" aria-label="Close">&times;</button>
+    </div>
+    <label for="newModuleTitle">Module title
+      <input id="newModuleTitle" type="text" required maxlength="80">
+    </label>
+    <label for="newModuleDescription">Description
+      <textarea id="newModuleDescription" maxlength="300"></textarea>
+    </label>
+    <p class="upload-status" id="moduleCreateStatus" role="status" aria-live="polite"></p>
+    <div class="upload-actions">
+      <button class="btn sm" id="moduleCreateCancel" type="button">Cancel</button>
+      <button class="btn sm" id="moduleCreateSubmit" type="submit">Add Module</button>
+    </div>
+  </form>
+</dialog>
+
 <script>
 const q = new URLSearchParams(location.search);
-const sem = q.get("sem") || "1";
+const sem = String(Number(q.get("sem")) || 1);
 const subject = q.get("s") || "Subject";
 const selectedBatch = getEffectiveBatch();
 
@@ -117,22 +135,42 @@ document.getElementById("roleTag").textContent = roleLabel(u.role);
 const moduleScope = `CSE_${sem}_${subject}`;
 let modules = [];
 let subjectFiles = [];
-
-function fileToBase64(file){
-  return new Promise((res,rej)=>{
-    const r = new FileReader();
-    r.onload = ()=>res(r.result);
-    r.onerror = rej;
-    r.readAsDataURL(file);
-  });
-}
+let currentSubjectRecord = null;
 
 async function loadSubjectData(){
+  const rawSubjects = await apiList("subjects", `CSE_${sem}`);
+  currentSubjectRecord = rawSubjects
+    .map(item => ({...(item.data || item), id: item.id}))
+    .find(item => String(item.name || "").toLowerCase() === subject.toLowerCase()) || null;
   const rawMods = await apiList("modules", moduleScope);
-  modules = rawMods.map(item => ({ id: item.id, ...item.data }));
+  modules = rawMods.map(item => ({...(item.data || item), id: item.id}));
+  await loadDriveFiles();
+}
 
-  const rawFiles = await apiList("module_files", moduleScope);
-  subjectFiles = rawFiles.map(item => ({ id: item.id, ...item.data }));
+async function loadDriveFiles(){
+  if(!modules.length){
+    subjectFiles = [];
+    return;
+  }
+  const ids = modules.map(module => module.id).filter(Boolean);
+  if(!ids.length){
+    subjectFiles = [];
+    return;
+  }
+  const token = localStorage.getItem("snps_token");
+  const response = await fetch(
+    `${API}/drive/modules/files?ids=${encodeURIComponent(ids.join(","))}&batch=${encodeURIComponent(selectedBatch)}`,
+    {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    }
+  );
+  const result = await response.json();
+  if(!response.ok) throw new Error(result.detail || "Could not load files from Google Drive.");
+  subjectFiles = Object.entries(result.files || {}).flatMap(([moduleId, files]) =>
+    files.map(file => ({...file, id: file.driveFileId || file.id, moduleId}))
+  );
 }
 
 async function render(){
@@ -152,15 +190,15 @@ async function render(){
 
     box.insertAdjacentHTML("beforeend",`
       <div class="card" style="padding:20px;">
-        <h4 style="color:#0b3d91;font-size:18px;margin-bottom:6px;">${m.title}</h4>
-        <p style="color:#555;font-size:14px;margin-bottom:15px;">${m.desc || ""}</p>
+        <h4 style="color:#0b3d91;font-size:18px;margin-bottom:6px;">${escapeHTML(m.title)}</h4>
+        <p style="color:#555;font-size:14px;margin-bottom:15px;">${escapeHTML(m.desc || "")}</p>
 
         <ul style="margin-top:15px;padding-left:0;list-style:none;">
           ${related.map(f=>`
             <li style="margin-bottom:8px;padding:12px;background:#fff;border:1px solid #eee;border-radius:8px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 5px rgba(0,0,0,0.02);">
-              <span style="font-weight:500;font-size:14px;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%;" title="${f.name}">📄 ${f.name}</span>
+              <span style="font-weight:500;font-size:14px;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%;" title="${escapeHTML(f.name)}">📄 ${escapeHTML(f.name)}</span>
                 <div style="display:flex;gap:8px;">
-                  <button class="btn sm" style="background:#0b3d91;color:#fff;" onclick="download('${f.id}')">Download</button>
+                  <button class="btn sm" style="background:#0b3d91;color:#fff;" data-download-id="${escapeHTML(f.id)}">Download</button>
                 </div>
             </li>
           `).join("")}
@@ -168,19 +206,53 @@ async function render(){
       </div>
     `);
   });
+
+  box.querySelectorAll("[data-download-id]").forEach(button => {
+    button.addEventListener("click", () => download(button.dataset.downloadId));
+  });
+}
+
+function escapeHTML(value){
+  return String(value ?? "").replace(/[&<>"']/g, character => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[character]);
 }
 
 async function download(id){
   const f = subjectFiles.find(x => x.id === id);
   if(!f) return alert("File not found");
-  const a = document.createElement("a");
-  a.href = f.data;
-  a.download = f.name;
-  a.click();
+  const fileUrl = f.downloadUrl || f.viewUrl;
+  const token = localStorage.getItem("snps_token");
+  if(!fileUrl || !token) return alert("Your session is missing. Sign in again to download.");
+  try{
+    const response = await fetch(new URL(fileUrl, `${API.replace(/\/api$/, "")}/`), {
+      headers: {"Authorization": `Bearer ${token}`}
+    });
+    const result = response.ok ? null : await response.json();
+    if(!response.ok) throw new Error(result?.detail || "Could not download the file.");
+    const objectUrl = URL.createObjectURL(await response.blob());
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = String(f.name || "download").replace(/[\\/]/g, "_");
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  }catch(error){
+    alert(error.message);
+  }
 }
+
+window.setInterval(() => {
+  if(document.visibilityState !== "visible") return;
+  loadDriveFiles().then(render).catch(error => console.warn(error));
+}, 5 * 60 * 1000);
 
 const uploadDialog = document.getElementById("uploadDialog");
 const uploadButton = document.getElementById("uploadOpen");
+const moduleCreateOpen = document.getElementById("moduleCreateOpen");
 const uploadYear = document.getElementById("uploadYear");
 const uploadSubject = document.getElementById("uploadSubject");
 const uploadModule = document.getElementById("uploadModule");
@@ -188,6 +260,9 @@ const uploadStatus = document.getElementById("uploadStatus");
 const uploadSubmit = document.getElementById("uploadSubmit");
 let uploadSubjects = [];
 let uploadModules = [];
+if(u?.role === "course_coordinator" && moduleCreateOpen){
+  moduleCreateOpen.style.display = "inline-block";
+}
 
 function replaceOptions(select, placeholder, options){
   select.replaceChildren(new Option(placeholder, ""));
@@ -293,20 +368,31 @@ if(uploadButton){
       uploadStatus.textContent = "Select an existing subject, module, and file.";
       return;
     }
+    const token = localStorage.getItem("snps_token");
+    if(!token){
+      uploadStatus.textContent = "Your session is missing. Sign in again to upload.";
+      return;
+    }
 
     uploadSubmit.disabled = true;
     uploadStatus.textContent = "Uploading...";
     try{
       const targetScope = `CSE_${selectedSubject.sem}_${selectedSubject.name}`;
-      await apiCreate("module_files", {
-        scope: targetScope,
-        name: file.name,
-        size: file.size,
-        data: await fileToBase64(file),
-        moduleId: selectedModule.id,
-        subject: selectedSubject.name,
-        date: new Date().toLocaleDateString()
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+      uploadData.append("moduleId", selectedModule.id);
+      uploadData.append("subject", selectedSubject.name);
+      uploadData.append("scope", targetScope);
+
+      const driveResponse = await fetch(`${API}/drive/upload`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        },
+        body: uploadData
       });
+      const driveFile = await driveResponse.json();
+      if(!driveResponse.ok) throw new Error(driveFile.detail || "Google Drive upload failed.");
 
       uploadDialog.close();
       if(Number(sem) === selectedSubject.sem && subject === selectedSubject.name){
@@ -319,6 +405,52 @@ if(uploadButton){
       uploadStatus.textContent = error.message;
     }finally{
       uploadSubmit.disabled = false;
+    }
+  });
+}
+
+const moduleCreateDialog = document.getElementById("moduleCreateDialog");
+const moduleCreateForm = document.getElementById("moduleCreateForm");
+const moduleCreateStatus = document.getElementById("moduleCreateStatus");
+const moduleCreateSubmit = document.getElementById("moduleCreateSubmit");
+
+if(moduleCreateOpen){
+  moduleCreateOpen.addEventListener("click", () => {
+    if(u?.role !== "course_coordinator") return;
+    moduleCreateForm.reset();
+    moduleCreateStatus.textContent = "";
+    moduleCreateDialog.showModal();
+  });
+
+  document.getElementById("moduleCreateClose").addEventListener("click", () => moduleCreateDialog.close());
+  document.getElementById("moduleCreateCancel").addEventListener("click", () => moduleCreateDialog.close());
+  moduleCreateForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if(u?.role !== "course_coordinator") return;
+    const title = document.getElementById("newModuleTitle").value.trim();
+    const desc = document.getElementById("newModuleDescription").value.trim();
+    if(!currentSubjectRecord?.id){
+      moduleCreateStatus.textContent = "This subject is not available for module creation.";
+      return;
+    }
+    moduleCreateSubmit.disabled = true;
+    moduleCreateStatus.textContent = "Creating module and Drive folder...";
+    try{
+      await apiCreateDriveHierarchy("modules", {
+        subjectId: currentSubjectRecord.id,
+        title,
+        desc,
+        sem: String(sem),
+        branch: currentSubjectRecord.branch || "CSE",
+        batch: getEffectiveBatch()
+      });
+      await loadSubjectData();
+      await render();
+      moduleCreateDialog.close();
+    }catch(error){
+      moduleCreateStatus.textContent = error.message || "Could not create the module.";
+    }finally{
+      moduleCreateSubmit.disabled = false;
     }
   });
 }

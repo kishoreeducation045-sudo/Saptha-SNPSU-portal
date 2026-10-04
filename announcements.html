@@ -86,9 +86,6 @@
 </head>
 
 <body>
-
-<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
 <script src="script.js"></script>
 <script>
 const u = requireAuth();
@@ -153,16 +150,18 @@ function render(){
   }
 
   items.forEach(a=>{
+    const attachment = safeDataURL(a.file);
+    const image = safeImageDataURL(attachment);
     al.insertAdjacentHTML("beforeend", `
       <li class="card" style="padding:18px;margin-bottom:15px">
-        <h4>${a.title}</h4>
-        <small>${a.date} · ${a.by}</small>
-        <p style="margin-top:10px">${a.body}</p>
+        <h4>${escapeHTMLValue(a.title)}</h4>
+        <small>${escapeHTMLValue(a.date)} · ${escapeHTMLValue(a.by)}</small>
+        <p style="margin-top:10px">${escapeHTMLValue(a.body)}</p>
 
-        ${a.file ? `
-          ${a.file.startsWith("data:image")
-            ? `<img src="${a.file}" style="max-width:220px;border-radius:10px;margin-top:10px">`
-            : `<a class="btn sm" href="${a.file}" download>Download File</a>`
+        ${attachment ? `
+          ${image
+            ? `<img src="${escapeHTMLValue(image)}" style="max-width:220px;border-radius:10px;margin-top:10px">`
+            : `<a class="btn sm" href="${escapeHTMLValue(attachment)}" download>Download File</a>`
           }
         ` : ""}
       </li>

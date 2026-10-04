@@ -1,4 +1,8 @@
-var API = location.port === "8000" ? "/api" : "http://127.0.0.1:8000/api";
+var API = window.SAPTHA_API_BASE || (
+    location.hostname === "localhost" || location.hostname === "127.0.0.1"
+        ? "http://127.0.0.1:8000/api"
+        : "/api"
+);
 
 var LS = {
     get: (k, d = null) => { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } },
@@ -6,15 +10,70 @@ var LS = {
     del: k => localStorage.removeItem(k)
 };
 
+function escapeHTMLValue(value) {
+    return String(value ?? "").replace(/[&<>"']/g, character => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[character]);
+}
+
+const SAFE_DATA_URL_MIME_TYPES = new Set([
+    "application/octet-stream",
+    "application/pdf",
+    "application/msword",
+    "application/rtf",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "image/bmp",
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "text/plain"
+]);
+
+function safeDataURL(value) {
+    if (typeof value !== "string") return "";
+    const match = value.match(/^data:([a-z0-9.+-]+\/[a-z0-9.+-]+);base64,([a-z0-9+/]*={0,2})$/i);
+    return match && SAFE_DATA_URL_MIME_TYPES.has(match[1].toLowerCase()) ? value : "";
+}
+
+function safeImageDataURL(value) {
+    return typeof value === "string"
+        && /^data:image\/(?:png|jpeg|gif|webp|bmp);base64,[a-z0-9+/]*={0,2}$/i.test(value)
+        ? value
+        : "";
+}
+
 function requireAuth() {
     const u = LS.get("snps_user");
     if (!u) { location.href = "index.html"; return null; }
     return u;
 }
 
-function logout() {
+async function apiLogout() {
+    const token = localStorage.getItem("snps_token");
+    if (token) {
+        try {
+            await fetch(`${API}/auth/logout`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+        } catch (error) {
+            console.warn("Could not invalidate the server session during logout.");
+        }
+    }
     LS.del("snps_user");
+    LS.del("snps_token");
     LS.del("viewing_batch");
+}
+
+async function logout() {
+    await apiLogout();
     location.href = "index.html";
 }
 
@@ -71,63 +130,132 @@ function canEdit(area) {
     return (EDIT_PERMISSIONS[area] || []).includes(u.role);
 }
 
-
-const firebaseConfig = {
-    apiKey: "AIzaSyBYnklU-sN7tSmT20xxhHjhe2f7S4bZGqE",
-    authDomain: "saptha-college.firebaseapp.com",
-    projectId: "saptha-college",
-    storageBucket: "saptha-college.firebasestorage.app",
-    messagingSenderId: "654209557619",
-    appId: "1:654209557619:web:434a43aa2a49e9d0ceb606",
-    databaseURL: "https://saptha-college-default-rtdb.firebaseio.com"
-};
-
-if (!window.firebase.apps.length) {
-    window.firebase.initializeApp(firebaseConfig);
-}
-const db = window.firebase.database();
-
 async function apiList(collectionName, scope = "") {
+    const token = localStorage.getItem("snps_token");
+    const params = new URLSearchParams();
+    if (scope) params.set("scope", scope);
     const batch = getEffectiveBatch();
-    const snapshot = await db.ref(collectionName).once('value');
-    let docs = [];
-    snapshot.forEach(child => {
-        docs.push({ id: child.key, ...child.val() });
+    if (batch) params.set("batch", batch);
+    const query = params.toString() ? `?${params}` : "";
+    const response = await fetch(`${API}/content/${encodeURIComponent(collectionName)}${query}`, {
+        headers: {
+            "Authorization": `Bearer ${token}`
+        }
     });
-
-    // Strict batch filtering: only show items that match the current batch or are explicitly set to 'All'
-    docs = docs.filter(d => {
-        let b = (d.data && d.data.batch) || d.batch;
-        return b === 'All' || b === batch;
-    });
-
-    if (scope) {
-        docs = docs.filter(d => {
-            let s = (d.data && d.data.scope) || d.scope;
-            return s === scope;
-        });
+    const result = await response.json();
+    if (!response.ok) {
+        throw new Error(result.detail || "Could not load records.");
     }
-    return docs;
+    return result;
 }
 
 async function apiCreate(collectionName, payload) {
-    const batch = getEffectiveBatch();
-    payload.batch = payload.batch || batch;
+    const token = localStorage.getItem("snps_token");
+    const body = { ...payload };
+    body.batch = body.batch || getEffectiveBatch();
+    const response = await fetch(`${API}/content/${encodeURIComponent(collectionName)}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+    });
+    const result = await response.json();
+    if (!response.ok) {
+        throw new Error(result.detail || "Could not save record.");
+    }
+    return result;
+}
 
-    const newRef = db.ref(collectionName).push();
-    const item = {
-        id: newRef.key,
-        data: payload,
-        created_at: new Date().toISOString()
-    };
+async function apiUsersList() {
+    const token = localStorage.getItem("snps_token");
+    const response = await fetch(`${API}/users`, {
+        headers: {
+            "Authorization": `Bearer ${token}`
+        }
+    });
 
-    await newRef.set(item);
-    return item;
+    const result = await response.json();
+    if (!response.ok) {
+        throw new Error(result.detail || "Could not load users.");
+    }
+
+    return result;
+}
+
+async function apiUserCreate(payload) {
+    const token = localStorage.getItem("snps_token");
+    const response = await fetch(`${API}/users`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+        throw new Error(result.detail || "Could not save user.");
+    }
+
+    return result;
+}
+
+async function apiUserDelete(srn) {
+    const token = localStorage.getItem("snps_token");
+    const response = await fetch(`${API}/users/${encodeURIComponent(srn)}`, {
+        method: "DELETE",
+        headers: {
+            "Authorization": `Bearer ${token}`
+        }
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+        throw new Error(result.detail || "Could not delete user.");
+    }
+
+    return result;
+}
+
+async function apiCreateDriveHierarchy(kind, record) {
+    const user = LS.get("snps_user");
+    const token = localStorage.getItem("snps_token");
+    if (!user || user.role !== "course_coordinator" || !token) {
+        throw new Error("Sign in as a Course Coordinator to create subjects or modules.");
+    }
+    const response = await fetch(`${API}/drive/hierarchy/${encodeURIComponent(kind)}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            record
+        })
+    });
+    const result = await response.json();
+    if (!response.ok) {
+        throw new Error(result.detail || "Could not create the Drive hierarchy.");
+    }
+    return result;
 }
 
 async function apiDelete(collectionName, id) {
-    await db.ref(collectionName).child(id).remove();
-    return { deleted: id };
+    const token = localStorage.getItem("snps_token");
+    const response = await fetch(`${API}/content/${encodeURIComponent(collectionName)}/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: {
+            "Authorization": `Bearer ${token}`
+        }
+    });
+    const result = await response.json();
+    if (!response.ok) {
+        throw new Error(result.detail || "Could not delete record.");
+    }
+    return result;
 }
 
 var NAV_ITEMS = [

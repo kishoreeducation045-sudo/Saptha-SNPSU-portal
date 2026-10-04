@@ -1,6 +1,9 @@
 import json
+import os
 from pathlib import Path
 from datetime import datetime, timezone
+
+from server import hash_password
 
 DB_FILE = Path("c:/Users/kisho/Downloads/Saptha-portal/Saptha-portal-main/saptha_db.json")
 
@@ -8,6 +11,11 @@ def now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 def update_db():
+    admin_password = os.getenv("SAPTHA_SEED_ADMIN_PASSWORD", "")
+    if not admin_password:
+        print("Set SAPTHA_SEED_ADMIN_PASSWORD to seed an admin account.")
+        return
+
     if not DB_FILE.exists():
         print("DB file not found.")
         return
@@ -20,7 +28,7 @@ def update_db():
         
     data["users"]["24SUUBECS0952"] = {
         "srn": "24SUUBECS0952",
-        "password": "admin@5185",
+        "password_hash": hash_password(admin_password),
         "role": "admin",
         "name": "Super Admin",
         "created_at": now_iso()

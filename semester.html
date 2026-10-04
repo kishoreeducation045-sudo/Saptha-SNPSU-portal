@@ -46,9 +46,6 @@
 </head>
 
 <body>
-
-<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
 <script src="script.js"></script>
 
 <script>
@@ -93,7 +90,10 @@ if (u?.role === "course_coordinator") {
 
 <script>
 const q = new URLSearchParams(location.search);
-const sem = q.get("sem") || "1";
+const requestedSemester = Number(q.get("sem"));
+const sem = Number.isInteger(requestedSemester) && requestedSemester >= 1 && requestedSemester <= 8
+    ? String(requestedSemester)
+    : "1";
 const selectedBatch = getEffectiveBatch();
 const branch = "CSE";
 
@@ -143,12 +143,13 @@ if (addSubjectOpen) {
         addSubjectSubmit.disabled = true;
         addSubjectStatus.textContent = "Adding subject...";
         try {
-            await apiCreate("subjects", {
+            await apiCreateDriveHierarchy("subjects", {
                 name,
                 desc,
                 branch,
                 sem: String(sem),
-                scope
+                scope,
+                batch: getEffectiveBatch()
             });
             await loadSubjects();
             render();
@@ -177,8 +178,8 @@ function render(){
             <div class="card subj-card">
                 <a href="subject.html?sem=${sem}&s=${encodeURIComponent(s.name)}">
                     <span class="tag">Semester ${sem}</span>
-                    <h4>${s.name}</h4>
-                    <small>${s.desc || "Click to view modules & notes"}</small>
+                    <h4>${escapeHTMLValue(s.name)}</h4>
+                    <small>${escapeHTMLValue(s.desc || "Click to view modules & notes")}</small>
                 </a>
             </div>
         `);

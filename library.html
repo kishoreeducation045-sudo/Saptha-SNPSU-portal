@@ -8,8 +8,6 @@
 </head>
 
 <body>
-<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
 <script src="script.js"></script>
 <script>
 const u = requireAuth();
@@ -49,9 +47,14 @@ function fmtSize(bytes){
 }
 
 function downloadDataURL(data, name){
+  const safeData = safeDataURL(data);
+  if(!safeData){
+    alert("This file cannot be downloaded because its data URL is invalid or unsupported.");
+    return;
+  }
   const a = document.createElement("a");
-  a.href = data;
-  a.download = name;
+  a.href = safeData;
+  a.download = String(name || "download");
   a.click();
 }
 
@@ -77,15 +80,18 @@ function render(){
     list.insertAdjacentHTML("beforeend",`
       <li class="card" style="margin-bottom:12px;padding:12px">
         <div>
-          <strong>${n.name}</strong><br>
-          <span class="file-meta">${n.by} · ${n.date} · ${fmtSize(n.size)}</span>
+          <strong>${escapeHTMLValue(n.name)}</strong><br>
+          <span class="file-meta">${escapeHTMLValue(n.by)} · ${escapeHTMLValue(n.date)} · ${fmtSize(n.size)}</span>
         </div>
 
         <div style="display:flex;gap:6px;margin-top:8px">
-          <button class="btn sm" onclick="downloadDataURL('${n.data}','${n.name}')">Download</button>
+          <button class="btn sm" type="button">Download</button>
         </div>
       </li>
     `);
+    list.lastElementChild.querySelector("button").addEventListener("click", () => {
+      downloadDataURL(n.data, n.name);
+    });
   });
 }
 

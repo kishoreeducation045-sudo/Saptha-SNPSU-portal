@@ -7,6 +7,11 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+raise RuntimeError(
+    "server_work.py is a legacy non-production server snapshot. "
+    "Use server.py for the secured application server."
+)
+
 # =========================
 # CONFIG
 # =========================
@@ -22,8 +27,6 @@ BRANCH_NAMES = {
 }
 
 COORDINATORS = {
-    "24SUUBECS0001": {"password": "coord123", "role": "course_coordinator", "name": "Course Coordinator"},
-    "24SUUBECS0002": {"password": "coord123", "role": "director", "name": "Director"},
 }
 
 ALLOWED_COLLECTIONS = {

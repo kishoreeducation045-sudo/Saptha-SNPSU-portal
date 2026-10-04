@@ -2,18 +2,18 @@
   "users": {
     "24SUUBECS0001": {
       "srn": "24SUUBECS0001",
-      "password": "coord123",
       "role": "course_coordinator",
       "created_at": "2026-05-12T14:58:11.822044+00:00",
       "name": "Course Coordinator",
-      "batch": "2024"
+      "batch": "2024",
+      "password_hash": "scrypt$16384$8$1$c0FWFGDNelEv7MYv95JMdA==$di3P7wzazjGqJ8f5OvRQZeU9gcvrlOjBJ90aOgYAvieBSx7mmzycs0Y3FogYuA4+1FEyfyU2Sv3qBMHQb+DBmA=="
     },
     "24SUUBECS0002": {
       "srn": "24SUUBECS0002",
-      "password": "coord123",
       "role": "director",
       "created_at": "2026-05-12T14:58:11.822202+00:00",
-      "name": "Director"
+      "name": "Director",
+      "password_hash": "scrypt$16384$8$1$nqqLC8XU4T+fRYNwueoPog==$IpsOADlA4W8BqHkCp12yh3Ivp0EdLy4vmUcFX5aglgq+eqA5M3iyV5OVTk1IGMH9lfIFdbpuykKw3AgH5oaXIg=="
     },
     "24SUUBECS0477": {
       "srn": "24SUUBECS0477",
@@ -34,58 +34,58 @@
     "24SUUBECS0003": {
       "srn": "24SUUBECS0003",
       "created_at": "2026-05-12T16:51:25.179988+00:00",
-      "password": "coord123",
       "role": "hrd_coordinator",
-      "name": "HRD Coordinator"
+      "name": "HRD Coordinator",
+      "password_hash": "scrypt$16384$8$1$5NMqYqipJHuX0a41nYACWA==$N546tKeb2i4ZY08U1Z1P+TivJiGE07EFko2DWnzdE/cBv4IaBZdHHP7g7EQA7QZfm3GjWzYlfdbB8mdHy7Ef3A=="
     },
     "24SUUBECS0004": {
       "srn": "24SUUBECS0004",
       "created_at": "2026-05-12T16:51:25.179991+00:00",
-      "password": "coord123",
       "role": "hostel_coordinator",
-      "name": "Hostel Coordinator"
+      "name": "Hostel Coordinator",
+      "password_hash": "scrypt$16384$8$1$4qO5CypQKewqC3BeMc9XdA==$ksc1q3fYwfbxaHzxiu5Fe1czm9VEC9jHjMDE4L534XbI1az6g9wR6aUNZ+e0Xx147td2N5cTxxTGTDAYkfTjUA=="
     },
     "24SUUBECS0005": {
       "srn": "24SUUBECS0005",
       "created_at": "2026-05-12T16:51:25.179992+00:00",
-      "password": "coord123",
       "role": "canteen_coordinator",
-      "name": "Canteen Coordinator"
+      "name": "Canteen Coordinator",
+      "password_hash": "scrypt$16384$8$1$RN309sOMNbfkbD0M2l7/zg==$mFV8lDJrbDckRzR1+gbn3LOuea5LtgPkrrsAAVlVJPAXimsbwyDifo5ZwCfkYje19hxMSXXWAzYAeaKEbuF/nA=="
     },
     "24SUUBECS0006": {
       "srn": "24SUUBECS0006",
       "created_at": "2026-05-12T16:51:25.179994+00:00",
-      "password": "coord123",
       "role": "library_coordinator",
-      "name": "Library Coordinator"
+      "name": "Library Coordinator",
+      "password_hash": "scrypt$16384$8$1$DWZKSRo3xMdYpT13Fj2tGQ==$gzP7uVGZgCYHy41tEKws1ihp0H316btOfPtWX9jYABwSRmoOqSITW4zBqzTOxjchXyqsDUm9P/s4UXoBnQxX9w=="
     },
     "24SUUBECS0007": {
       "srn": "24SUUBECS0007",
       "created_at": "2026-05-12T16:51:25.179996+00:00",
-      "password": "coord123",
       "role": "dsa_coordinator",
-      "name": "DSA Member"
+      "name": "DSA Member",
+      "password_hash": "scrypt$16384$8$1$MqJOd5GpHtLDox95AdoM9w==$Dwb+iPiFkfoAyzD6dpucDWfP3xLRQ6sTp7RcH79F4DKNggJwFmDtRpX/jXnD0zJI4A4vKmG4VNtwJY5iMPytQA=="
     },
     "24SUUBECS0008": {
       "srn": "24SUUBECS0008",
       "created_at": "2026-05-12T16:51:25.179997+00:00",
-      "password": "coord123",
       "role": "placement_coordinator",
-      "name": "Placement Coordinator"
+      "name": "Placement Coordinator",
+      "password_hash": "scrypt$16384$8$1$kYB/15v3hHdPJzVKOhONqQ==$YRcvoxeEcPdrB5uEEz5On6rRHeQZsYg/MyC1AqxPbPNeVLznn4LSEJ6D67d9HChpwUSfr6UdDyH6yIPoZ0Y2Tw=="
     },
     "24SUUBECS0009": {
       "srn": "24SUUBECS0009",
       "created_at": "2026-05-12T16:51:25.179999+00:00",
-      "password": "coord123",
       "role": "sports_coordinator",
-      "name": "Sports Coordinator"
+      "name": "Sports Coordinator",
+      "password_hash": "scrypt$16384$8$1$vRVtU/L542qYZHTz0lxSKA==$jC/mhhAQpKj/TQWIk9wcSL0LAdweT/Nl0ucahXfW5zkt1sFiF/95iPR5qqdAXnku45hEMkSPUUl+U1UVCzVvkw=="
     },
     "24SUUBECS0010": {
       "srn": "24SUUBECS0010",
       "created_at": "2026-05-12T16:51:25.180000+00:00",
-      "password": "coord123",
       "role": "events_coordinator",
-      "name": "Events Coordinator"
+      "name": "Events Coordinator",
+      "password_hash": "scrypt$16384$8$1$dTrrqEgpbGZAGn+QN7x4Jg==$COi5ZyJDB/BiM05pOqQfg10GvkHHmu7Cr5guY+jTsNzjeX1O3fSS8fvNOMfJXwNhG9h8ug3BgM2pHo+flkqDwQ=="
     },
     "24SUUBECS0530": {
       "srn": "24SUUBECS0530",
@@ -98,359 +98,60 @@
     },
     "24SUUBECS0952": {
       "srn": "24SUUBECS0952",
-      "password": "admin@5185",
       "role": "admin",
       "name": "Super Admin",
-      "created_at": "2026-06-02T10:32:58.777017+00:00"
+      "created_at": "2026-06-02T10:32:58.777017+00:00",
+      "password_hash": "scrypt$16384$8$1$agZCqElASrIk7Wqb18ng9g==$F4hjraMoBLrFGwwQAXkZyTmK+4e+Z7HSrobKxbfkS0O+hPHjELmqU2Wn+MT7isxJMiUO7oTjSzkZNicYy8YhcQ=="
     }
   },
   "sessions": {
-    "7668e2ee-0d70-4121-94cb-5a48f5ac458c": {
-      "token": "7668e2ee-0d70-4121-94cb-5a48f5ac458c",
-      "srn": "24SUUBECS0001",
-      "role": "coordinator",
-      "branch": "ECE",
-      "branchName": "Electronics & Communication Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0001",
-      "photo": null
-    },
-    "02ad6936-577d-42ce-9726-192d80027df3": {
-      "token": "02ad6936-577d-42ce-9726-192d80027df3",
-      "srn": "24SUUBECS0001",
-      "role": "coordinator",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0001",
-      "photo": null
-    },
-    "a4b0d303-a263-4d0c-bdfd-f0616cbb2502": {
-      "token": "a4b0d303-a263-4d0c-bdfd-f0616cbb2502",
-      "srn": "24SUUBECS0477",
-      "role": "student",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0477",
-      "photo": null
-    },
-    "c7af3113-e846-4af0-8c2a-6154d044a078": {
-      "token": "c7af3113-e846-4af0-8c2a-6154d044a078",
-      "srn": "24SUUBECS0001",
-      "role": "coordinator",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0001",
-      "photo": null
-    },
-    "500cfc27-1513-451f-ac5d-1d7a65179159": {
-      "token": "500cfc27-1513-451f-ac5d-1d7a65179159",
-      "srn": "24SUUBECS0001",
-      "role": "coordinator",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0001",
-      "photo": null
-    },
-    "218adb5a-d8fb-40a6-ab36-d12204a1ef25": {
-      "token": "218adb5a-d8fb-40a6-ab36-d12204a1ef25",
-      "srn": "24SUUBECS0001",
-      "role": "coordinator",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0001",
-      "photo": null
-    },
-    "a1dfb60a-9df7-43ca-b0e2-2cc5840e7ad4": {
-      "token": "a1dfb60a-9df7-43ca-b0e2-2cc5840e7ad4",
-      "srn": "24SUUBECS0001",
-      "role": "coordinator",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0001",
-      "photo": null
-    },
-    "7ac87355-0b1e-477d-b950-4535d0e3db45": {
-      "token": "7ac87355-0b1e-477d-b950-4535d0e3db45",
-      "srn": "24SUUBECS0001",
-      "role": "coordinator",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0001",
-      "photo": null
-    },
-    "9aadaccd-aa6b-423e-966d-bd567fa176c2": {
-      "token": "9aadaccd-aa6b-423e-966d-bd567fa176c2",
-      "srn": "24SUUBECS0477",
-      "role": "student",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0477",
-      "photo": null
-    },
-    "c85b6423-bbb6-40d1-aaef-2dcb6e780bbb": {
-      "token": "c85b6423-bbb6-40d1-aaef-2dcb6e780bbb",
-      "srn": "24SUUBECS0001",
-      "role": "student",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0001",
-      "photo": null
-    },
-    "32534127-d204-4461-a0bd-83dc44349b4e": {
-      "token": "32534127-d204-4461-a0bd-83dc44349b4e",
-      "srn": "24SUUBECS0001",
-      "role": "coordinator",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0001",
-      "photo": null
-    },
-    "94014eca-d7bf-43c0-87ef-bc58f1f1c89a": {
-      "token": "94014eca-d7bf-43c0-87ef-bc58f1f1c89a",
-      "srn": "24SUUBECS0001",
-      "role": "coordinator",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0001",
-      "photo": null
-    },
-    "d7cc9408-d8e8-4bc6-9374-67e86f621235": {
-      "token": "d7cc9408-d8e8-4bc6-9374-67e86f621235",
-      "srn": "24SUUBECS0001",
-      "role": "coordinator",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0001",
-      "photo": null
-    },
-    "7b9cd044-c78d-4d61-ae2b-cf33a959ae9c": {
-      "token": "7b9cd044-c78d-4d61-ae2b-cf33a959ae9c",
-      "srn": "24SUUBECS1234",
-      "role": "student",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS1234",
-      "photo": null
-    },
-    "87513bda-db01-4a3a-8c48-2e73c327b947": {
-      "token": "87513bda-db01-4a3a-8c48-2e73c327b947",
-      "srn": "24SUUBECS0477",
-      "role": "student",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0477",
-      "photo": null
-    },
-    "db6d15a2-43e4-48af-83f2-153da77b3ca4": {
-      "token": "db6d15a2-43e4-48af-83f2-153da77b3ca4",
-      "srn": "24SUUBECS1234",
-      "role": "student",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS1234",
-      "photo": null
-    },
-    "355c3003-ba98-4870-a1ab-bb61696b2fd0": {
-      "token": "355c3003-ba98-4870-a1ab-bb61696b2fd0",
-      "srn": "24SUUBECS0001",
-      "role": "coordinator",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0001",
-      "photo": null
-    },
-    "5980c60f-ef6e-4709-82ba-86b8f7ee7a60": {
-      "token": "5980c60f-ef6e-4709-82ba-86b8f7ee7a60",
-      "srn": "24SUUBECS0001",
-      "role": "coordinator",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0001",
-      "photo": null
-    },
-    "cc8b1b6a-1af2-4384-953f-919e103d7502": {
-      "token": "cc8b1b6a-1af2-4384-953f-919e103d7502",
-      "srn": "24SUUBECS0477",
-      "role": "student",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0477",
-      "photo": null
-    },
-    "d2c073fe-1a8f-4362-be6c-58190fbe120b": {
-      "token": "d2c073fe-1a8f-4362-be6c-58190fbe120b",
-      "srn": "24SUUBECS0001",
-      "role": "coordinator",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0001",
-      "photo": null
-    },
-    "1ac87468-c9c5-44c1-b146-81751f414277": {
-      "token": "1ac87468-c9c5-44c1-b146-81751f414277",
-      "srn": "24SUUBECS04767",
-      "role": "student",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS04767",
-      "photo": null
-    },
-    "394d9630-8315-4c19-a0e4-8a04acbc3c1d": {
-      "token": "394d9630-8315-4c19-a0e4-8a04acbc3c1d",
-      "srn": "24SUUBECS0477",
-      "role": "student",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0477",
-      "photo": null
-    },
-    "0abf3bea-3db3-47a6-acd7-60d037430ba1": {
-      "token": "0abf3bea-3db3-47a6-acd7-60d037430ba1",
-      "srn": "24SUUBECS0002",
-      "role": "director",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "Director",
-      "photo": null
-    },
-    "74757748-1f8b-4bbd-b76a-0211ce7ddb53": {
-      "token": "74757748-1f8b-4bbd-b76a-0211ce7ddb53",
-      "srn": "24SUUBECS0530",
-      "role": "student",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0530",
-      "photo": null
-    },
-    "c1eb8917-738a-4c83-aeb1-2eded948a2bc": {
-      "token": "c1eb8917-738a-4c83-aeb1-2eded948a2bc",
-      "srn": "24SUUBECS0530",
-      "role": "student",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "24SUUBECS0530",
-      "photo": null
-    },
-    "d770a014-4db3-4b77-91f5-f0cd094a38e7": {
-      "token": "d770a014-4db3-4b77-91f5-f0cd094a38e7",
-      "srn": "24SUUBECS0001",
-      "role": "course_coordinator",
-      "branch": "CSE",
-      "branchName": "Computer Science & Engineering",
-      "batch": "2024",
-      "name": "Course Coordinator",
-      "photo": null
-    },
-    "b8feaa5d-fa82-4206-b05b-42a29c4b8397": {
-      "token": "b8feaa5d-fa82-4206-b05b-42a29c4b8397",
-      "srn": "24SUUBECS0530",
-      "role": "student",
-      "branch": "CSE",
-      "name": "24SUUBECS0530"
-    },
-    "3533e962-1886-4246-97c2-05e8db45f92e": {
-      "token": "3533e962-1886-4246-97c2-05e8db45f92e",
-      "srn": "24SUUBECS0001",
-      "role": "course_coordinator",
-      "branch": "CSE",
-      "name": "Course Coordinator"
-    },
-    "097d3f1b-28b9-4682-838e-03ad614dc24c": {
-      "token": "097d3f1b-28b9-4682-838e-03ad614dc24c",
-      "srn": "25SUUBECS0530",
-      "role": "student",
-      "branch": "CSE",
-      "name": "25SUUBECS0530"
-    },
-    "2acd99ff-f843-4b1e-953b-59cc66447f33": {
-      "token": "2acd99ff-f843-4b1e-953b-59cc66447f33",
-      "srn": "24SUUBECS0002",
-      "role": "director",
-      "branch": "CSE",
-      "name": "Director"
-    },
-    "5dca414e-2c46-4a13-94df-809dc717d0ba": {
-      "token": "5dca414e-2c46-4a13-94df-809dc717d0ba",
-      "srn": "25SUUBECS0530",
-      "role": "student",
-      "branch": "CSE",
-      "name": "25SUUBECS0530"
-    },
-    "f1b487ea-0975-4572-b91b-e2cb27c13920": {
-      "token": "f1b487ea-0975-4572-b91b-e2cb27c13920",
-      "srn": "24SUUBECS0002",
-      "role": "director",
-      "branch": "CSE",
-      "name": "Director"
-    },
-    "30c5b6e1-ab9a-487f-a5e9-fb6313576136": {
-      "token": "30c5b6e1-ab9a-487f-a5e9-fb6313576136",
-      "srn": "25SUUBECS0530",
-      "role": "student",
-      "branch": "CSE",
-      "name": "25SUUBECS0530"
-    },
-    "a2e608b1-9294-4d52-9cc1-505f97df2440": {
-      "token": "a2e608b1-9294-4d52-9cc1-505f97df2440",
-      "srn": "25SUUBECS0530",
-      "role": "student",
-      "branch": "CSE",
-      "name": "25SUUBECS0530"
-    },
-    "8a580315-9ca3-4f51-8557-cd1dd3b60c89": {
-      "token": "8a580315-9ca3-4f51-8557-cd1dd3b60c89",
-      "srn": "25SUUBECS0530",
-      "role": "student",
-      "branch": "CSE",
-      "name": "25SUUBECS0530"
-    },
-    "fb5e4b7b-69ec-4e87-a944-49a261cbfcfa": {
-      "token": "fb5e4b7b-69ec-4e87-a944-49a261cbfcfa",
-      "srn": "24SUUBECS0001",
-      "role": "course_coordinator",
+    "b532e759-7280-4f0d-8016-c38dbe7323fd": {
+      "token": "b532e759-7280-4f0d-8016-c38dbe7323fd",
+      "srn": "24SUUBECS0952",
+      "role": "admin",
       "branch": "CSE",
       "batch": "2024",
-      "name": "Course Coordinator"
+      "name": "Super Admin"
     },
-    "c5c67e41-ec85-4ed2-94f2-7559279c7bc0": {
-      "token": "c5c67e41-ec85-4ed2-94f2-7559279c7bc0",
-      "srn": "24SUUBECS0477",
-      "role": "student",
+    "60c8d562-dba4-4e86-99a0-2c2902dba565": {
+      "token": "60c8d562-dba4-4e86-99a0-2c2902dba565",
+      "srn": "24SUUBECS0952",
+      "role": "admin",
       "branch": "CSE",
       "batch": "2024",
-      "name": "24SUUBECS0477"
+      "name": "Super Admin"
     },
-    "7742d3b7-de37-48e7-857a-903a43782c7c": {
-      "token": "7742d3b7-de37-48e7-857a-903a43782c7c",
-      "srn": "24SUUBECS0001",
-      "role": "course_coordinator",
+    "13345fdf-69a5-4a7f-8bb0-2fbc08a49471": {
+      "token": "13345fdf-69a5-4a7f-8bb0-2fbc08a49471",
+      "srn": "24SUUBECS0952",
+      "role": "admin",
       "branch": "CSE",
       "batch": "2024",
-      "name": "Course Coordinator"
+      "name": "Super Admin"
+    },
+    "5b32ea67-a80d-443b-82f4-7e0942461721": {
+      "token": "5b32ea67-a80d-443b-82f4-7e0942461721",
+      "srn": "24SUUBECS0952",
+      "role": "admin",
+      "branch": "CSE",
+      "batch": "2024",
+      "name": "Super Admin"
+    },
+    "2dc41c0e-87be-46f8-acda-2821f35bd928": {
+      "token": "2dc41c0e-87be-46f8-acda-2821f35bd928",
+      "srn": "24SUUBECS0952",
+      "role": "admin",
+      "branch": "CSE",
+      "batch": "2024",
+      "name": "Super Admin"
+    },
+    "eb2ad6e1-6f43-4892-8fd3-a3ba09d535b9": {
+      "token": "eb2ad6e1-6f43-4892-8fd3-a3ba09d535b9",
+      "srn": "24SUUBECS0952",
+      "role": "admin",
+      "branch": "CSE",
+      "batch": "2024",
+      "name": "Super Admin"
     }
   },
   "contacts": [],

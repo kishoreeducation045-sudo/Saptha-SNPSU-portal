@@ -1,5 +1,18 @@
+# Demo-only mock server. Use server.py for the secured application API.
+$configuredEnvironment = [string]$env:SAPTHA_ENVIRONMENT
+if ($configuredEnvironment.Trim().ToLowerInvariant() -eq "production") {
+    Write-Error "The demo mock server cannot run in production. Start server.py instead."
+    exit 1
+}
+
 $port = 8000
 $path = $PSScriptRoot
+$allowedOrigins = @(
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000"
+)
 
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://127.0.0.1:$port/")
@@ -10,7 +23,6 @@ Write-Host "Listening on http://127.0.0.1:$port/ and http://localhost:$port/"
 function Send-Json($response, $data, $statusCode=200) {
     $response.ContentType = "application/json; charset=utf-8"
     $response.StatusCode = $statusCode
-    $response.Headers.Add("Access-Control-Allow-Origin", "*")
     $response.Headers.Add("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS")
     $response.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Authorization")
     
@@ -28,9 +40,19 @@ try {
         $context = $listener.GetContext()
         $request = $context.Request
         $response = $context.Response
+        $origin = $request.Headers["Origin"]
+
+        if ($origin -and $allowedOrigins -notcontains $origin) {
+            $response.StatusCode = 403
+            $response.Close()
+            continue
+        }
+        if ($origin) {
+            $response.Headers.Add("Access-Control-Allow-Origin", $origin)
+            $response.Headers.Add("Vary", "Origin")
+        }
 
         if ($request.HttpMethod -eq "OPTIONS") {
-            $response.Headers.Add("Access-Control-Allow-Origin", "*")
             $response.Headers.Add("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS")
             $response.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Authorization")
             $response.StatusCode = 204
@@ -129,7 +151,6 @@ try {
                 
                 $response.ContentType = "application/json; charset=utf-8"
                 $response.StatusCode = 200
-                $response.Headers.Add("Access-Control-Allow-Origin", "*")
                 $contentBytes = [System.Text.Encoding]::UTF8.GetBytes($json)
                 $response.ContentLength64 = $contentBytes.Length
                 $response.OutputStream.Write($contentBytes, 0, $contentBytes.Length)

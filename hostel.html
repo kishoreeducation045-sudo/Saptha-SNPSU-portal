@@ -37,8 +37,6 @@
 </head>
 
 <body>
-<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
 <script src="script.js"></script>
 <script>
 const u = requireAuth();
@@ -127,16 +125,18 @@ function render(){
   al.innerHTML = "";
 
   hostelAnnouncements.slice().reverse().forEach(a=>{
+    const attachment = safeDataURL(a.file);
+    const image = safeImageDataURL(attachment);
     al.insertAdjacentHTML("beforeend",`
       <li class="card" style="margin-bottom:14px">
-        <h4>${a.title}</h4>
-        <small>${a.date} · ${a.by}</small>
-        <p style="margin:10px 0">${a.body}</p>
+        <h4>${escapeHTMLValue(a.title)}</h4>
+        <small>${escapeHTMLValue(a.date)} · ${escapeHTMLValue(a.by)}</small>
+        <p style="margin:10px 0">${escapeHTMLValue(a.body)}</p>
 
-        ${a.file ? `
-          ${a.file.startsWith("data:image")
-            ? `<img src="${a.file}" style="max-width:240px;display:block;margin:10px 0;border-radius:8px">`
-            : `<a href="${a.file}" download class="btn sm">Download Attachment</a>`
+        ${attachment ? `
+          ${image
+            ? `<img src="${escapeHTMLValue(image)}" style="max-width:240px;display:block;margin:10px 0;border-radius:8px">`
+            : `<a href="${escapeHTMLValue(attachment)}" download class="btn sm">Download Attachment</a>`
           }
         ` : ``}
       </li>

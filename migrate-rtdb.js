@@ -31,7 +31,7 @@ async function migrate() {
     const collections = [
         'announcements', 'activity_announcements', 'events', 'placements',
         'sports', 'hrd_programs', 'hostel_announcements', 'hostel_info',
-        'canteen_info', 'library', 'subjects', 'modules', 'module_files'
+        'canteen_info', 'library', 'subjects', 'modules'
     ];
     
     for (const col of collections) {

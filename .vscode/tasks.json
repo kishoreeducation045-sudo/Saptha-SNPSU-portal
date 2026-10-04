@@ -1,0 +1,37 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Saptha Portal",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"-e",
+				"const http=require(\"http\"),fs=require(\"fs\"),path=require(\"path\");const root=process.cwd(),types={\".html\":\"text/html; charset=utf-8\",\".js\":\"text/javascript; charset=utf-8\",\".css\":\"text/css; charset=utf-8\",\".png\":\"image/png\",\".jpg\":\"image/jpeg\",\".json\":\"application/json\"};http.createServer((req,res)=>{const pathname=decodeURIComponent(new URL(req.url,\"http://localhost\").pathname),relative=pathname===\"/\"?\"index.html\":pathname.slice(1),file=path.resolve(root,relative);if(file!==root&&!file.startsWith(root+path.sep)){res.writeHead(403).end(\"Forbidden\");return}fs.stat(file,(error,stat)=>{if(error||!stat.isFile()){res.writeHead(404).end(\"Not found\");return}res.writeHead(200,{\"Content-Type\":types[path.extname(file)]||\"application/octet-stream\"});fs.createReadStream(file).pipe(res)})}).listen(5173,\"127.0.0.1\",()=>console.log(\"SAPTHA Portal running at http://127.0.0.1:5173\"))"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Run Saptha Drive API",
+			"type": "shell",
+			"command": "zsh",
+			"args": [
+				"-lc",
+				"set -a; source \"$HOME/.config/saptha/drive.env\"; set +a; python3 server.py"
+			],
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Verify Saptha Drive Setup",
+			"type": "shell",
+			"command": "zsh",
+			"args": [
+				"-lc",
+				"set -a; source \"$HOME/.config/saptha/drive.env\"; set +a; python3 verify_drive_setup.py"
+			],
+			"problemMatcher": []
+		}
+	]
+}

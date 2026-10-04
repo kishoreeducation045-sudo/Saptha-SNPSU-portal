@@ -207,8 +207,8 @@
                 <label>SRN</label>
             </div>
 
-            <div class="input-group" id="pwdBox" style="display:none">
-                <input id="pwd" type="password" placeholder=" ">
+            <div class="input-group" id="pwdBox">
+                <input id="pwd" type="password" placeholder=" " required autocomplete="current-password">
                 <label>Password</label>
             </div>
 
@@ -222,15 +222,11 @@
         </p>
 
     </div>
-
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
     <script src="script.js"></script>
     <script>
         let role = "student";
         const coordRole = document.getElementById("coordRole");
         const coordRoleBox = document.getElementById("coordRoleBox");
-        const pwdBox = document.getElementById("pwdBox");
 
         /* ROLE SWITCH */
         document.querySelectorAll("#roleToggle button").forEach(b => {
@@ -240,7 +236,6 @@
                 const isCoord = b.dataset.role === "coordinator";
                 role = isCoord ? coordRole.value : "student";
                 coordRoleBox.style.display = isCoord ? "block" : "none";
-                pwdBox.style.display = isCoord ? "block" : "none";
             };
         });
 
@@ -264,35 +259,26 @@
             }
 
             try {
-                const usersRef = window.firebase.database().ref('users');
-                const snapshot = await usersRef.orderByChild('srn').equalTo(srn).once('value');
+                const response = await fetch(`${API}/auth/login`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        srn,
+                        password,
+                        role
+                    })
+                });
 
-                let userData = null;
-                if (snapshot.exists()) {
-                    snapshot.forEach(child => { userData = child.val(); });
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || "Invalid SRN or Password");
                 }
 
-                if (role !== "student") {
-                    // Coordinators MUST exist and have the correct password and role
-                    if (!userData || userData.password !== password) {
-                        throw new Error("Invalid SRN or Password");
-                    }
-                    if (userData.role !== role) {
-                        throw new Error(`You don't have ${role} privileges.`);
-                    }
-                } else {
-                    // Students can login automatically (auto-register on first login)
-                    if (!userData) {
-                        userData = { srn: srn, role: "student", created_at: new Date().toISOString() };
-                        await usersRef.child(srn).set(userData);
-                    }
-                }
-
-                localStorage.setItem("snps_user", JSON.stringify({
-                    ...userData,
-                    srn,
-                    role: userData.role || 'student'
-                }));
+                localStorage.setItem("snps_user", JSON.stringify(result));
+                localStorage.setItem("snps_token", result.token);
 
                 window.location.href = "home.html";
 
