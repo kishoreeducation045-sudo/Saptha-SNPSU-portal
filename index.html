@@ -202,19 +202,23 @@
                 </select>
             </div>
 
-            <div class="input-group">
-                <input id="srn" placeholder=" " required autocomplete="off">
-                <label>SRN</label>
-            </div>
-
             <div class="input-group" id="pwdBox">
                 <input id="pwd" type="password" placeholder=" " required autocomplete="current-password">
                 <label>Password</label>
             </div>
 
+            <p class="sub" id="studentLoginNotice" style="display:none" role="status">
+                Student passwordless sign-in is not configured. Contact the portal administrator.
+            </p>
+
+            <div class="input-group">
+                <input id="srn" placeholder=" " required autocomplete="off">
+                <label>SRN</label>
+            </div>
+
             <div id="err" style="display:none"></div>
 
-            <button class="btn" type="submit">Login</button>
+            <button class="btn" id="loginButton" type="submit">Login</button>
         </form>
 
         <p class="sub" style="text-align:center;margin-top:16px;font-size:12px">
@@ -227,6 +231,21 @@
         let role = "student";
         const coordRole = document.getElementById("coordRole");
         const coordRoleBox = document.getElementById("coordRoleBox");
+        const passwordBox = document.getElementById("pwdBox");
+        const passwordInput = document.getElementById("pwd");
+        const studentLoginNotice = document.getElementById("studentLoginNotice");
+        const loginButton = document.getElementById("loginButton");
+
+        function updateLoginMode(isCoordinator) {
+            role = isCoordinator ? coordRole.value : "student";
+            coordRoleBox.style.display = isCoordinator ? "block" : "none";
+            passwordBox.style.display = isCoordinator ? "grid" : "none";
+            passwordInput.required = isCoordinator;
+            studentLoginNotice.style.display = isCoordinator ? "none" : "block";
+            loginButton.disabled = !isCoordinator;
+        }
+
+        updateLoginMode(false);
 
         /* ROLE SWITCH */
         document.querySelectorAll("#roleToggle button").forEach(b => {
@@ -234,21 +253,24 @@
                 document.querySelectorAll("#roleToggle button").forEach(x => x.classList.remove("active"));
                 b.classList.add("active");
                 const isCoord = b.dataset.role === "coordinator";
-                role = isCoord ? coordRole.value : "student";
-                coordRoleBox.style.display = isCoord ? "block" : "none";
+                updateLoginMode(isCoord);
             };
         });
 
         coordRole.onchange = () => {
-            if (coordRoleBox.style.display !== "none") role = coordRole.value;
+            if (coordRoleBox.style.display !== "none") {
+                role = coordRole.value;
+            }
         };
 
         /* LOGIN */
         document.getElementById("loginForm").addEventListener("submit", async e => {
             e.preventDefault();
 
+            if (role === "student") return;
+
             const srn = document.getElementById("srn").value.trim().toUpperCase();
-            const password = document.getElementById("pwd").value;
+            const password = passwordInput.value;
             const err = document.getElementById("err");
 
             const srnRegex = /^(?:\d{2}[A-Z]{7}\d{4}|\d{2}[A-Z]{8}\d{3})$/;
