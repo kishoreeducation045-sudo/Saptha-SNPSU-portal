@@ -239,10 +239,10 @@
         function updateLoginMode(isCoordinator) {
             role = isCoordinator ? coordRole.value : "student";
             coordRoleBox.style.display = isCoordinator ? "block" : "none";
-            passwordBox.style.display = isCoordinator ? "grid" : "none";
-            passwordInput.required = isCoordinator;
-            studentLoginNotice.style.display = isCoordinator ? "none" : "block";
-            loginButton.disabled = !isCoordinator;
+            passwordBox.style.display = "block";
+            passwordInput.required = true;
+            studentLoginNotice.style.display = "none";
+            loginButton.disabled = false;
         }
 
         updateLoginMode(false);
@@ -266,8 +266,6 @@
         /* LOGIN */
         document.getElementById("loginForm").addEventListener("submit", async e => {
             e.preventDefault();
-
-            if (role === "student") return;
 
             const srn = document.getElementById("srn").value.trim().toUpperCase();
             const password = passwordInput.value;

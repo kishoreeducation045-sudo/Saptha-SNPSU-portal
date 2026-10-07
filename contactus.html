@@ -174,13 +174,13 @@
             const phone = option.getAttribute("data-phone");
 
             document.getElementById("developerDetails").innerHTML = `
-        <h4>${name}</h4>
+        <h4>${escapeHTMLValue(name)}</h4>
         <p>
             <strong>Phone:</strong><br>
-            ${phone}
+            ${escapeHTMLValue(phone)}
             <br><br>
             <strong>Email:</strong><br>
-            ${email}
+            ${escapeHTMLValue(email)}
         </p>
     `;
         }

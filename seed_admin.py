@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from server import hash_password
 
-DB_FILE = Path("c:/Users/kisho/Downloads/Saptha-portal/Saptha-portal-main/saptha_db.json")
+DB_FILE = Path(__file__).resolve().parent / "saptha_db.json"
 
 def now_iso():
     return datetime.now(timezone.utc).isoformat()

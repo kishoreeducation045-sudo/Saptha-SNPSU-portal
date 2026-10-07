@@ -31,6 +31,12 @@ BASE_DIR = Path(__file__).resolve().parent
 DB_FILE = BASE_DIR / "saptha_db.json"
 DB_LOCK = threading.RLock()
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path=BASE_DIR / ".env")
+except ImportError:
+    pass
+
 HOST = os.getenv("SAPTHA_HOST", "127.0.0.1")
 PORT = int(os.getenv("SAPTHA_PORT", "8000"))
 ENVIRONMENT = os.getenv("SAPTHA_ENVIRONMENT", "development").strip().lower()
@@ -481,14 +487,23 @@ def parse_branch(srn):
     return None
 
 
-def firebase_read(path):
-    get_firebase_admin_app()
-    return firebase_db.reference(path).get()
-
-
 def get_firebase_admin_app():
     if firebase_admin._apps:
         return firebase_admin.get_app()
+
+    sa_json = os.getenv("SAPTHA_FIREBASE_SERVICE_ACCOUNT_JSON", "").strip()
+    if sa_json:
+        try:
+            cert_dict = json.loads(sa_json)
+            cred = firebase_credentials.Certificate(cert_dict)
+            return firebase_admin.initialize_app(
+                cred,
+                {
+                    "databaseURL": FIREBASE_DATABASE_URL,
+                },
+            )
+        except Exception as err:
+            logging.warning("Failed to initialize Firebase from service account JSON string: %s", err)
 
     if not FIREBASE_SERVICE_ACCOUNT_FILE.exists():
         raise RuntimeError(
@@ -508,11 +523,45 @@ def get_firebase_admin_app():
     )
 
 
-def firebase_write(path, value):
-    get_firebase_admin_app()
+def firebase_read(path):
+    try:
+        get_firebase_admin_app()
+        return firebase_db.reference(path).get()
+    except Exception as error:
+        if ENVIRONMENT == "production":
+            raise
+        data = read_db()
+        parts = [unquote(p) for p in path.strip("/").split("/") if p]
+        if not parts:
+            return data
+        current = data
+        for part in parts:
+            if isinstance(current, dict):
+                current = current.get(part)
+            else:
+                return None
+        return current
 
-    reference = firebase_db.reference(path)
-    reference.set(value)
+
+def firebase_write(path, value):
+    try:
+        get_firebase_admin_app()
+        reference = firebase_db.reference(path)
+        reference.set(value)
+    except Exception as error:
+        if ENVIRONMENT == "production":
+            raise
+        data = read_db()
+        parts = [unquote(p) for p in path.strip("/").split("/") if p]
+        if not parts:
+            return
+        current = data
+        for part in parts[:-1]:
+            if isinstance(current, dict):
+                current = current.setdefault(part, {})
+        if isinstance(current, dict):
+            current[parts[-1]] = value
+        write_db(data)
 
 
 def trusted_urlopen(request, timeout):

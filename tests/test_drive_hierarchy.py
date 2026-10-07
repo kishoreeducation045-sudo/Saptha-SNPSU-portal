@@ -71,6 +71,11 @@ class DriveHierarchyTests(unittest.TestCase):
         )
         self.environment.start()
         self.addCleanup(self.environment.stop)
+        self.firebase_account_patch = patch.object(
+            server, "FIREBASE_SERVICE_ACCOUNT_FILE", server.BASE_DIR / "server.py"
+        )
+        self.firebase_account_patch.start()
+        self.addCleanup(self.firebase_account_patch.stop)
         self.cache = dict(server.DRIVE_CACHE)
         server.DRIVE_CACHE.clear()
         self.addCleanup(server.DRIVE_CACHE.clear)

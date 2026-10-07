@@ -144,7 +144,8 @@ async function loadCanteenInfo(){
 }
 
 function parseMenu(menu){
-    return menu.split(/\n\s*\n/).map(block=>{
+    const rawMenu = String(menu || DEFAULT_CANTEEN_INFO.menu);
+    return rawMenu.split(/\n\s*\n/).map(block=>{
         const lines = block.split("\n").map(x=>x.trim()).filter(Boolean);
         return {title: lines[0] || "Menu", items: lines.slice(1)};
     }).filter(group => group.title);
@@ -152,13 +153,14 @@ function parseMenu(menu){
 
 function renderCanteen(){
     const info = canteenInfo || DEFAULT_CANTEEN_INFO;
-    document.getElementById("canteenMenu").innerHTML = parseMenu(info.menu).map(group => `
+    const menuText = info.menu || DEFAULT_CANTEEN_INFO.menu;
+    document.getElementById("canteenMenu").innerHTML = parseMenu(menuText).map(group => `
         <div class="menu-card">
             <h4>${escapeHTML(group.title)}</h4>
             <small>${group.items.map(escapeHTML).join("<br>")}</small>
         </div>
     `).join("");
-    document.getElementById("canteenContact").textContent = info.contact;
+    document.getElementById("canteenContact").textContent = info.contact || DEFAULT_CANTEEN_INFO.contact;
 }
 
 loadCanteenInfo().then(()=>{
