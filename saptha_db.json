@@ -152,6 +152,22 @@
       "branch": "CSE",
       "batch": "2024",
       "name": "Super Admin"
+    },
+    "aa4a065a-ffb2-4088-b501-979f9f1dad24": {
+      "token": "aa4a065a-ffb2-4088-b501-979f9f1dad24",
+      "srn": "24SUUBECS0477",
+      "role": "student",
+      "branch": "CSE",
+      "batch": "2024",
+      "name": "24SUUBECS0477"
+    },
+    "d954bfd5-8d9e-4309-91d7-797d77843c6a": {
+      "token": "d954bfd5-8d9e-4309-91d7-797d77843c6a",
+      "srn": "24SUUBECS0001",
+      "role": "course_coordinator",
+      "branch": "CSE",
+      "batch": "2024",
+      "name": "Course Coordinator"
     }
   },
   "contacts": [],

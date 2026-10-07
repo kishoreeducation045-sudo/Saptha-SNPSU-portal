@@ -1587,14 +1587,56 @@ class Handler(SimpleHTTPRequestHandler):
         raw_srn = body.get("srn", "")
         srn = raw_srn.strip().upper() if isinstance(raw_srn, str) else ""
         password = body.get("password")
+        req_role = str(body.get("role") or "").strip().lower() or "student"
 
         branch = parse_branch(srn)
         if not branch:
             return self.fail(401, "Invalid login")
+
+        user = firebase_read(f"users/{quote(srn, safe='')}")
+
+        # Student login (passwordless)
+        if req_role == "student":
+            if isinstance(user, dict) and user.get("role") and user.get("role") != "student":
+                # Privileged accounts cannot bypass password authentication
+                return self.fail(401, "Invalid login")
+
+            batch = str((user.get("batch") if isinstance(user, dict) else None) or parse_batch(srn) or "2024")
+            if not isinstance(user, dict):
+                user = {
+                    "srn": srn,
+                    "name": srn,
+                    "role": "student",
+                    "batch": batch,
+                    "created_at": now_iso(),
+                }
+            else:
+                user = dict(user)
+                user["srn"] = srn
+                user["role"] = "student"
+                user["batch"] = batch
+
+            firebase_write(f"users/{quote(srn, safe='')}", user)
+
+            token = str(uuid.uuid4())
+            session = {
+                "token": token,
+                "srn": srn,
+                "role": "student",
+                "branch": branch["code"],
+                "batch": batch,
+                "name": user.get("name", srn),
+            }
+
+            data["sessions"][token] = session
+            write_db(data)
+
+            return self.send_json(200, session)
+
+        # Coordinator / Admin login (password required)
         if not isinstance(password, str) or not password:
             return self.fail(401, "Invalid login")
 
-        user = firebase_read(f"users/{quote(srn, safe='')}")
         if not isinstance(user, dict):
             return self.fail(401, "Invalid login")
 
@@ -1608,12 +1650,8 @@ class Handler(SimpleHTTPRequestHandler):
             if role != "student" and password in ("password", "coord123", "admin@5185"):
                 valid_password = True
                 legacy_password = False
-            elif role == "student" and not user.get("password_hash") and not user.get("password"):
-                valid_password = True
-                legacy_password = False
-                user["password_hash"] = hash_password(password)
 
-        if not valid_password or (role == "student" and legacy_password):
+        if not valid_password:
             return self.fail(401, "Invalid login")
 
         if legacy_password:

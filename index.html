@@ -202,18 +202,14 @@
                 </select>
             </div>
 
-            <div class="input-group" id="pwdBox">
-                <input id="pwd" type="password" placeholder=" " required autocomplete="current-password">
-                <label>Password</label>
-            </div>
-
-            <p class="sub" id="studentLoginNotice" style="display:none" role="status">
-                Student passwordless sign-in is not configured. Contact the portal administrator.
-            </p>
-
             <div class="input-group">
                 <input id="srn" placeholder=" " required autocomplete="off">
                 <label>SRN</label>
+            </div>
+
+            <div class="input-group" id="pwdBox" style="display:none">
+                <input id="pwd" type="password" placeholder=" " autocomplete="current-password">
+                <label>Password</label>
             </div>
 
             <div id="err" style="display:none"></div>
@@ -233,15 +229,16 @@
         const coordRoleBox = document.getElementById("coordRoleBox");
         const passwordBox = document.getElementById("pwdBox");
         const passwordInput = document.getElementById("pwd");
-        const studentLoginNotice = document.getElementById("studentLoginNotice");
         const loginButton = document.getElementById("loginButton");
 
         function updateLoginMode(isCoordinator) {
             role = isCoordinator ? coordRole.value : "student";
             coordRoleBox.style.display = isCoordinator ? "block" : "none";
-            passwordBox.style.display = "block";
-            passwordInput.required = true;
-            studentLoginNotice.style.display = "none";
+            passwordBox.style.display = isCoordinator ? "block" : "none";
+            passwordInput.required = isCoordinator;
+            if (!isCoordinator) {
+                passwordInput.value = "";
+            }
             loginButton.disabled = false;
         }
 
@@ -270,6 +267,7 @@
             const srn = document.getElementById("srn").value.trim().toUpperCase();
             const password = passwordInput.value;
             const err = document.getElementById("err");
+            err.style.display = "none";
 
             const srnRegex = /^(?:\d{2}[A-Z]{7}\d{4}|\d{2}[A-Z]{8}\d{3})$/;
             if (!srnRegex.test(srn)) {
@@ -279,22 +277,26 @@
             }
 
             try {
+                const payload = {
+                    srn,
+                    role
+                };
+                if (role !== "student") {
+                    payload.password = password;
+                }
+
                 const response = await fetch(`${API}/auth/login`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
                     },
-                    body: JSON.stringify({
-                        srn,
-                        password,
-                        role
-                    })
+                    body: JSON.stringify(payload)
                 });
 
                 const result = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(result.error || "Invalid SRN or Password");
+                    throw new Error(result.error || result.detail || "Invalid SRN or Password");
                 }
 
                 localStorage.setItem("snps_user", JSON.stringify(result));

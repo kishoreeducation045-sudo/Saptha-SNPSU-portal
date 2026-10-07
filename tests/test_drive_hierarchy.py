@@ -207,16 +207,61 @@ class DriveHierarchyTests(unittest.TestCase):
             invalid = server.Handler.login(invalid_handler)
         self.assertEqual(invalid[0], 401)
 
-    def test_student_login_requires_verified_scrypt_credentials(self):
+    def test_student_login_succeeds_without_password(self):
         account = {
             "srn": "24SUUBECS0001",
             "name": "Student A",
             "role": "student",
             "batch": "2024",
-            "password_hash": server.hash_password("student-a-secret"),
         }
         cases = (
-            ("valid password", {"password": "student-a-secret"}, 200),
+            ("no password field", {}),
+            ("empty password field", {"password": ""}),
+            ("arbitrary password field", {"password": "any-password"}),
+        )
+
+        for label, credential_fields in cases:
+            with self.subTest(case=label):
+                body = {"srn": account["srn"], "role": "student", **credential_fields}
+                handler = FakeHandler(body)
+                with patch("server.read_db", return_value=server.empty_db()), patch(
+                    "server.firebase_read", return_value=account
+                ), patch("server.firebase_write") as firebase_write, patch(
+                    "server.write_db"
+                ) as write_db:
+                    result = server.Handler.login(handler)
+
+                self.assertEqual(result[0], 200)
+                self.assertEqual(result[1]["srn"], account["srn"])
+                self.assertEqual(result[1]["role"], "student")
+                self.assertEqual(result[1]["batch"], "2024")
+                self.assertNotIn("password", result[1])
+                self.assertNotIn("password_hash", result[1])
+                write_db.assert_called_once()
+                firebase_write.assert_called_once()
+                forged_student = FakeHandler(user=result[1])
+                with patch("server.read_db", return_value=server.empty_db()):
+                    denied_write = server.Handler.content(
+                        forged_student,
+                        "POST",
+                        ["sports"],
+                        urlparse(
+                            "/api/content/sports?role=admin&"
+                            "srn=25SUUBECS0002&batch=2025"
+                        ),
+                    )
+                self.assertEqual(denied_write[0], 403)
+
+    def test_coordinator_login_requires_verified_scrypt_credentials(self):
+        account = {
+            "srn": "24SUUBECS0001",
+            "name": "Coordinator A",
+            "role": "course_coordinator",
+            "batch": "2024",
+            "password_hash": server.hash_password("coordinator-secret"),
+        }
+        cases = (
+            ("valid password", {"password": "coordinator-secret"}, 200),
             ("wrong password", {"password": "not-the-password"}, 401),
             ("empty password", {"password": ""}, 401),
             ("missing password", {}, 401),
@@ -224,7 +269,7 @@ class DriveHierarchyTests(unittest.TestCase):
 
         for label, credential_fields, expected_status in cases:
             with self.subTest(case=label):
-                body = {"srn": account["srn"], "role": "student", **credential_fields}
+                body = {"srn": account["srn"], "role": "course_coordinator", **credential_fields}
                 handler = FakeHandler(body)
                 with patch("server.read_db", return_value=server.empty_db()), patch(
                     "server.firebase_read", return_value=account
@@ -236,33 +281,19 @@ class DriveHierarchyTests(unittest.TestCase):
                 self.assertEqual(result[0], expected_status)
                 if expected_status == 200:
                     self.assertEqual(result[1]["srn"], account["srn"])
-                    self.assertEqual(result[1]["role"], "student")
-                    self.assertEqual(result[1]["batch"], "2024")
+                    self.assertEqual(result[1]["role"], "course_coordinator")
                     self.assertNotIn("password", result[1])
                     self.assertNotIn("password_hash", result[1])
                     write_db.assert_called_once()
                     firebase_write.assert_called_once()
-                    forged_student = FakeHandler(user=result[1])
-                    with patch("server.read_db", return_value=server.empty_db()):
-                        denied_write = server.Handler.content(
-                            forged_student,
-                            "POST",
-                            ["sports"],
-                            urlparse(
-                                "/api/content/sports?role=admin&"
-                                "srn=25SUUBECS0002&batch=2025"
-                            ),
-                        )
-                    self.assertEqual(denied_write[0], 403)
                 else:
                     write_db.assert_not_called()
                     firebase_write.assert_not_called()
 
-    def test_student_login_rejects_unknown_srn(self):
+    def test_student_login_rejects_invalid_branch_srn(self):
         handler = FakeHandler({
-            "srn": "24SUUBECS9999",
+            "srn": "24SUUBEMEC0001",
             "role": "student",
-            "password": "some-password",
         })
         with patch("server.read_db", return_value=server.empty_db()), patch(
             "server.firebase_read", return_value=None
@@ -272,67 +303,19 @@ class DriveHierarchyTests(unittest.TestCase):
         self.assertEqual(result[0], 401)
         write_db.assert_not_called()
 
-    def test_student_login_removes_stale_plaintext_when_hash_verifies(self):
-        account = {
-            "srn": "24SUUBECS0001",
-            "name": "Student A",
-            "role": "student",
-            "batch": "2024",
-            "password_hash": server.hash_password("student-a-secret"),
-            "password": "legacy-value",
+    def test_privileged_user_cannot_bypass_password_via_student_login(self):
+        admin_account = {
+            "srn": "24SUUBECS0952",
+            "name": "Admin User",
+            "role": "admin",
+            "password_hash": server.hash_password("admin-secret"),
         }
         handler = FakeHandler({
-            "srn": account["srn"],
+            "srn": "24SUUBECS0952",
             "role": "student",
-            "password": "student-a-secret",
         })
         with patch("server.read_db", return_value=server.empty_db()), patch(
-            "server.firebase_read", return_value=account
-        ), patch("server.firebase_write") as firebase_write, patch("server.write_db"):
-            result = server.Handler.login(handler)
-
-        self.assertEqual(result[0], 200)
-        self.assertNotIn("password", firebase_write.call_args.args[1])
-
-    def test_student_login_never_authenticates_from_legacy_plaintext(self):
-        account = {
-            "srn": "24SUUBECS0001",
-            "name": "Student A",
-            "role": "student",
-            "batch": "2024",
-            "password": "legacy-plaintext",
-        }
-        handler = FakeHandler({
-            "srn": account["srn"],
-            "role": "student",
-            "password": "legacy-plaintext",
-        })
-        with patch("server.read_db", return_value=server.empty_db()), patch(
-            "server.firebase_read", return_value=account
-        ), patch("server.firebase_write") as firebase_write, patch(
-            "server.write_db"
-        ) as write_db:
-            result = server.Handler.login(handler)
-
-        self.assertEqual(result[0], 401)
-        firebase_write.assert_not_called()
-        write_db.assert_not_called()
-
-    def test_student_a_credentials_cannot_create_student_b_session(self):
-        student_b = {
-            "srn": "25SUUBECS0002",
-            "name": "Student B",
-            "role": "student",
-            "batch": "2025",
-            "password_hash": server.hash_password("student-b-secret"),
-        }
-        handler = FakeHandler({
-            "srn": student_b["srn"],
-            "role": "student",
-            "password": "student-a-secret",
-        })
-        with patch("server.read_db", return_value=server.empty_db()), patch(
-            "server.firebase_read", return_value=student_b
+            "server.firebase_read", return_value=admin_account
         ), patch("server.write_db") as write_db:
             result = server.Handler.login(handler)
 
