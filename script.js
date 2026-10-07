@@ -1,7 +1,9 @@
 var API = window.SAPTHA_API_BASE || (
-    location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    location.protocol === "file:"
         ? "http://127.0.0.1:8000/api"
-        : "/api"
+        : (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+            ? (location.port === "8000" ? "/api" : `http://${location.hostname}:8000/api`)
+            : "/api"
 );
 
 var LS = {

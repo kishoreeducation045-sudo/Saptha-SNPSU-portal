@@ -76,6 +76,14 @@ LOCAL_TRUSTED_ORIGINS = {
     "http://localhost:8000",
     "http://127.0.0.1:5173",
     "http://localhost:5173",
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+    "http://127.0.0.1:3000",
+    "http://localhost:3000",
+    "http://127.0.0.1:8080",
+    "http://localhost:8080",
+    "https://sapthasnpsuportal.vercel.app",
+    "https://saptha-snpsu-portal.vercel.app",
 }
 
 
