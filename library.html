@@ -12,6 +12,12 @@
 <script>
 const u = requireAuth();
 renderHeader("library.html");
+
+if (canEdit("library")) {
+    document.body.insertAdjacentHTML("beforeend", `
+        <button class="add-btn" id="openAddBook" type="button" aria-label="Add book" title="Upload Book / Resource">+</button>
+    `);
+}
 </script>
 
 <section>
@@ -19,10 +25,33 @@ renderHeader("library.html");
   <h3>E-Library</h3>
   <p class="lead">Coordinator-uploaded textbooks & reference materials.</p>
 
-  <div id="coord"></div>
-  <ul class="notes-list" id="list"></ul>
+  <ul class="notes-list" id="list" style="list-style:none;padding:0;margin-top:20px;"></ul>
 </div>
 </section>
+
+<!-- Dialog: Upload Book -->
+<dialog class="portal-dialog" id="addBookDialog" aria-labelledby="addBookTitle">
+  <form class="portal-form" id="addBookForm">
+    <div class="portal-form-header">
+      <h3 id="addBookTitle">Upload Textbook / Reference</h3>
+      <button class="portal-close-btn" id="closeAddBook" type="button" aria-label="Close">&times;</button>
+    </div>
+    <label for="bookTitle">Book / Document Name *
+      <input id="bookTitle" type="text" required maxlength="120" placeholder="e.g. Data Structures & Algorithms (Core Reference)">
+    </label>
+    <label for="bookAuthor">Author / Department / Subject *
+      <input id="bookAuthor" type="text" required maxlength="100" placeholder="e.g. CSE Faculty / Prof. Tanenbaum">
+    </label>
+    <label for="bookFile">PDF / Document File *
+      <input id="bookFile" type="file" required accept=".pdf,.doc,.docx,.ppt,.pptx,.txt">
+    </label>
+    <p class="portal-status" id="bookStatusMsg" role="status" aria-live="polite"></p>
+    <div class="portal-form-actions">
+      <button class="btn sm ghost" id="cancelAddBook" type="button">Cancel</button>
+      <button class="btn sm" id="submitAddBook" type="submit">Upload to Library</button>
+    </div>
+  </form>
+</dialog>
 
 <script>
 const COLLECTION = "library";
@@ -30,19 +59,20 @@ let books = [];
 
 async function loadItems(){
   const raw = await apiList(COLLECTION);
-  books = raw.map(item => ({ id: item.id, ...item.data }));
+  books = raw.map(item => ({ id: item.id, ...(item.data || item) }));
 }
 
-function fileToBase64(file){
-  return new Promise((res,rej)=>{
-    const r = new FileReader();
-    r.onload = ()=>res(r.result);
-    r.onerror = rej;
-    r.readAsDataURL(file);
+function fileToDataURL(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
 }
 
 function fmtSize(bytes){
+  if (!bytes) return "PDF";
   return (bytes/1024/1024).toFixed(2) + " MB";
 }
 
@@ -54,15 +84,20 @@ function downloadDataURL(data, name){
   }
   const a = document.createElement("a");
   a.href = safeData;
-  a.download = String(name || "download");
+  a.download = String(name || "textbook.pdf").replace(/[\\/]/g, "_");
   a.click();
 }
 
 async function deleteBook(id){
-  if(!confirm("Delete this book?")) return;
-  await apiDelete(COLLECTION, id);
-  await loadItems();
-  render();
+  if(!canEdit("library")) return;
+  if(!confirm("Delete this book from the E-Library?")) return;
+  try {
+    await apiDelete(COLLECTION, id);
+    await loadItems();
+    render();
+  } catch (err) {
+    alert(err.message || "Failed to delete book.");
+  }
 }
 
 function render(){
@@ -70,28 +105,119 @@ function render(){
   list.innerHTML = "";
 
   const visibleBooks = books.slice().reverse();
+  const userCanEdit = canEdit("library");
 
   if(visibleBooks.length === 0){
-    list.innerHTML = '<div class="empty">No books uploaded yet.</div>';
+    list.innerHTML = `<li class="card" style="padding:20px;text-align:center;color:#666;">No books uploaded yet. ${userCanEdit ? "Click the gold <b>+</b> button to upload one." : ""}</li>`;
     return;
   }
 
   visibleBooks.forEach(n=>{
+    const bookName = n.name || n.title || "Reference Book";
+    const authorBy = n.by || n.author || "Library Coordinator";
+    const dateStr = n.date || "Recent";
+    const sizeStr = n.size ? fmtSize(n.size) : "PDF Resource";
+
     list.insertAdjacentHTML("beforeend",`
-      <li class="card" style="margin-bottom:12px;padding:12px">
-        <div>
-          <strong>${escapeHTMLValue(n.name)}</strong><br>
-          <span class="file-meta">${escapeHTMLValue(n.by)} · ${escapeHTMLValue(n.date)} · ${fmtSize(n.size)}</span>
+      <li class="card" style="margin-bottom:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+        <div style="flex:1;min-width:240px;">
+          <strong style="color:var(--brand);font-size:16px;">📚 ${escapeHTMLValue(bookName)}</strong><br>
+          <span style="color:#666;font-size:13px;">${escapeHTMLValue(authorBy)} · ${escapeHTMLValue(dateStr)} · ${escapeHTMLValue(sizeStr)}</span>
         </div>
 
-        <div style="display:flex;gap:6px;margin-top:8px">
-          <button class="btn sm" type="button">Download</button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          ${n.data ? `
+            <button class="btn sm" type="button" data-download-id="${escapeHTMLValue(n.id)}">Download PDF</button>
+          ` : n.link ? `
+            <a class="btn sm" href="${escapeHTMLValue(n.link)}" target="_blank" rel="noopener">Open Link</a>
+          ` : ""}
+          ${userCanEdit ? `
+            <button class="btn-card-del" data-del-id="${escapeHTMLValue(n.id)}" type="button">Delete</button>
+          ` : ""}
         </div>
       </li>
     `);
-    list.lastElementChild.querySelector("button").addEventListener("click", () => {
-      downloadDataURL(n.data, n.name);
+  });
+
+  list.querySelectorAll("[data-download-id]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const b = visibleBooks.find(x => x.id === btn.dataset.downloadId);
+      if (b && b.data) downloadDataURL(b.data, b.name || b.title);
     });
+  });
+
+  if (userCanEdit) {
+    list.querySelectorAll("[data-del-id]").forEach(btn => {
+      btn.addEventListener("click", () => deleteBook(btn.dataset.delId));
+    });
+  }
+}
+
+// Modal handling
+const addDialog = document.getElementById("addBookDialog");
+const openBtn = document.getElementById("openAddBook");
+const closeBtn = document.getElementById("closeAddBook");
+const cancelBtn = document.getElementById("cancelAddBook");
+const addForm = document.getElementById("addBookForm");
+const statusMsg = document.getElementById("bookStatusMsg");
+const submitBtn = document.getElementById("submitAddBook");
+
+if (openBtn && addDialog) {
+  openBtn.addEventListener("click", () => {
+    if (!canEdit("library")) return;
+    addForm.reset();
+    document.getElementById("bookAuthor").value = u?.name || "Library Coordinator";
+    statusMsg.textContent = "";
+    addDialog.showModal();
+  });
+
+  if (closeBtn) closeBtn.addEventListener("click", () => addDialog.close());
+  if (cancelBtn) cancelBtn.addEventListener("click", () => addDialog.close());
+
+  addForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!canEdit("library")) return;
+
+    const name = document.getElementById("bookTitle").value.trim();
+    const by = document.getElementById("bookAuthor").value.trim();
+    const fileInput = document.getElementById("bookFile");
+    const file = fileInput.files && fileInput.files[0];
+
+    if (!name || !file) {
+      statusMsg.textContent = "Book name and PDF file are required.";
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      statusMsg.textContent = "File must be 8MB or smaller.";
+      return;
+    }
+
+    submitBtn.disabled = true;
+    statusMsg.textContent = "Uploading document...";
+
+    try {
+      const dataUrl = await fileToDataURL(file);
+      const payload = {
+        name,
+        title: name,
+        by,
+        author: by,
+        date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+        size: file.size,
+        data: dataUrl,
+        batch: getEffectiveBatch()
+      };
+
+      await apiCreate(COLLECTION, payload);
+      await loadItems();
+      render();
+      addDialog.close();
+    } catch (err) {
+      statusMsg.textContent = err.message || "Failed to upload book.";
+    } finally {
+      submitBtn.disabled = false;
+    }
   });
 }
 

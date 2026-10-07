@@ -51,7 +51,7 @@
 <script>
 const u = requireAuth();
 renderHeader("departments.html");
-if (u?.role === "course_coordinator") {
+if (canEdit("departments")) {
     document.body.insertAdjacentHTML("beforeend", `
         <button class="add-btn" id="addSubjectOpen" type="button" aria-label="Add subject">+</button>
     `);
@@ -120,7 +120,7 @@ document.getElementById("subjectSemesterLabel").textContent = sem;
 
 if (addSubjectOpen) {
     addSubjectOpen.addEventListener("click", () => {
-        if (u?.role !== "course_coordinator") return;
+        if (!canEdit("departments")) return;
         document.getElementById("addSubjectForm").reset();
         addSubjectStatus.textContent = "";
         addSubjectDialog.showModal();
@@ -130,7 +130,7 @@ if (addSubjectOpen) {
 
     document.getElementById("addSubjectForm").addEventListener("submit", async event => {
         event.preventDefault();
-        if (u?.role !== "course_coordinator") return;
+        if (!canEdit("departments")) return;
 
         const name = document.getElementById("newSubjectName").value.trim();
         const desc = document.getElementById("newSubjectDescription").value.trim();

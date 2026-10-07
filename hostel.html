@@ -41,35 +41,97 @@
 <script>
 const u = requireAuth();
 renderHeader("hostel.html");
+
+if (canEdit("hostel")) {
+    document.body.insertAdjacentHTML("beforeend", `
+        <button class="add-btn" id="openAddHostel" type="button" aria-label="Add hostel post" title="Hostel Coordinator Actions">+</button>
+    `);
+}
 </script>
 
 <section>
 <div class="container">
 
-  <h3>Hostel</h3>
-  <p class="lead">Menu, contact and latest announcements.</p>
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:10px;">
+    <div>
+      <h3>Hostel</h3>
+      <p class="lead" style="margin:0;">Weekly mess menu, warden contact and latest resident announcements.</p>
+    </div>
+    <script>
+      if (canEdit("hostel")) {
+        document.write(`
+          <button class="btn sm ghost" id="btnEditHostelInfo" type="button" style="font-weight:bold;">⚙️ Edit Menu & Contact</button>
+        `);
+      }
+    </script>
+  </div>
 
-  <div id="hostelEditForm"></div>
-
-  <div class="grid cols-2">
+  <div class="grid cols-2" style="margin-top:20px;">
     <div class="card hostel-card">
-      <h4>Weekly Menu</h4>
+      <h4 style="color:var(--brand);margin-bottom:10px;">🍽️ Weekly Dining Menu</h4>
       <ul class="menu-list" id="hostelMenu"></ul>
     </div>
 
     <div class="card hostel-card">
-      <h4>Contact</h4>
+      <h4 style="color:var(--brand);margin-bottom:10px;">📞 Warden & Office Contacts</h4>
       <p id="hostelContact" style="line-height:1.9"></p>
     </div>
   </div>
 
-  <h3 class="section-gap">Hostel Announcements</h3>
+  <h3 class="section-gap" style="margin-top:40px;">Hostel Announcements</h3>
 
-  <div id="coordForm"></div>
   <ul class="announcements-list" id="al"></ul>
 
 </div>
 </section>
+
+<!-- Dialog: Add Hostel Announcement -->
+<dialog class="portal-dialog" id="addHostelAnnouncementDialog" aria-labelledby="hostelAnnTitle">
+  <form class="portal-form" id="addHostelAnnouncementForm">
+    <div class="portal-form-header">
+      <h3 id="hostelAnnTitle">Post Hostel Notice</h3>
+      <button class="portal-close-btn" id="closeAddHostelAnn" type="button" aria-label="Close">&times;</button>
+    </div>
+    <label for="hostelAnnHeading">Notice Title *
+      <input id="hostelAnnHeading" type="text" required maxlength="120" placeholder="e.g. Mess Timings for Festival / Gate Closing Rules">
+    </label>
+    <label for="hostelAnnBy">Posted By *
+      <input id="hostelAnnBy" type="text" required maxlength="80" value="Hostel Coordinator">
+    </label>
+    <label for="hostelAnnBody">Details / Rules *
+      <textarea id="hostelAnnBody" required maxlength="1000" placeholder="Enter full announcement details..."></textarea>
+    </label>
+    <label for="hostelAnnFile">Optional Attachment (Image / PDF)
+      <input id="hostelAnnFile" type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.txt">
+    </label>
+    <p class="portal-status" id="hostelAnnStatus" role="status" aria-live="polite"></p>
+    <div class="portal-form-actions">
+      <button class="btn sm ghost" id="cancelAddHostelAnn" type="button">Cancel</button>
+      <button class="btn sm" id="submitAddHostelAnn" type="submit">Post Notice</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Dialog: Edit Hostel Menu & Info -->
+<dialog class="portal-dialog" id="editHostelInfoDialog" aria-labelledby="hostelInfoTitle">
+  <form class="portal-form" id="editHostelInfoForm">
+    <div class="portal-form-header">
+      <h3 id="hostelInfoTitle">Update Menu & Contact Info</h3>
+      <button class="portal-close-btn" id="closeEditHostelInfo" type="button" aria-label="Close">&times;</button>
+    </div>
+    <label for="hostelMenuInput">Weekly Dining Menu (One day per line) *
+      <textarea id="hostelMenuInput" rows="7" required placeholder="Monday: Idli, Sambar, Rice..."></textarea>
+    </label>
+    <label for="hostelContactInput">Warden & Helpline Contact (One item per line) *
+      <textarea id="hostelContactInput" rows="4" required placeholder="Hostel Warden: Mr. Ramesh..."></textarea>
+    </label>
+    <p class="portal-status" id="hostelInfoStatus" role="status" aria-live="polite"></p>
+    <div class="portal-form-actions">
+      <button class="btn sm ghost" id="cancelEditHostelInfo" type="button">Cancel</button>
+      <button class="btn sm" id="submitEditHostelInfo" type="submit">Save Changes</button>
+    </div>
+  </form>
+</dialog>
 
 <script>
 const COLLECTION = "hostel_announcements";
@@ -93,17 +155,17 @@ Timings: 9:00 AM - 6:00 PM`
 
 async function loadItems(){
   const rawAnn = await apiList(COLLECTION);
-  hostelAnnouncements = rawAnn.map(item => ({ id: item.id, ...item.data }));
+  hostelAnnouncements = rawAnn.map(item => ({ id: item.id, ...(item.data || item) }));
   const infoItems = await apiList(INFO_COLLECTION);
   const lastInfo = infoItems[infoItems.length - 1];
-  hostelInfo = lastInfo ? { id: lastInfo.id, ...lastInfo.data } : DEFAULT_HOSTEL_INFO;
+  hostelInfo = lastInfo ? { id: lastInfo.id, ...(lastInfo.data || lastInfo) } : DEFAULT_HOSTEL_INFO;
 }
 
 function escapeHTML(value){
   return String(value || "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
 }
 
-function fileToBase64(file){
+function fileToDataURL(file){
   return new Promise((res,rej)=>{
     const r = new FileReader();
     r.onload = ()=>res(r.result);
@@ -113,10 +175,15 @@ function fileToBase64(file){
 }
 
 async function deleteAnnouncement(id){
-  if(!confirm("Delete this announcement?")) return;
-  await apiDelete(COLLECTION, id);
-  await loadItems();
-  render();
+  if(!canEdit("hostel")) return;
+  if(!confirm("Delete this hostel announcement?")) return;
+  try {
+    await apiDelete(COLLECTION, id);
+    await loadItems();
+    render();
+  } catch (err) {
+    alert(err.message || "Failed to delete announcement.");
+  }
 }
 
 function render(){
@@ -124,24 +191,46 @@ function render(){
   const al = document.getElementById("al");
   al.innerHTML = "";
 
-  hostelAnnouncements.slice().reverse().forEach(a=>{
+  const items = hostelAnnouncements.slice().reverse();
+  const userCanEdit = canEdit("hostel");
+
+  if (items.length === 0) {
+    al.innerHTML = `<li class="card" style="padding:20px;text-align:center;color:#666;">No hostel notices posted yet. ${userCanEdit ? "Click the <b>+</b> button to post one." : ""}</li>`;
+    return;
+  }
+
+  items.forEach(a=>{
     const attachment = safeDataURL(a.file);
     const image = safeImageDataURL(attachment);
+    const bodyText = a.body || a.desc || "";
     al.insertAdjacentHTML("beforeend",`
-      <li class="card" style="margin-bottom:14px">
-        <h4>${escapeHTMLValue(a.title)}</h4>
-        <small>${escapeHTMLValue(a.date)} · ${escapeHTMLValue(a.by)}</small>
-        <p style="margin:10px 0">${escapeHTMLValue(a.body)}</p>
+      <li class="card" style="margin-bottom:14px;padding:18px;position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+          <div>
+            <h4>${escapeHTMLValue(a.title)}</h4>
+            <small>${escapeHTMLValue(a.date || new Date().toLocaleDateString())} · ${escapeHTMLValue(a.by || "Hostel Coordinator")}</small>
+          </div>
+          ${userCanEdit ? `
+            <button class="btn-card-del" data-del-id="${escapeHTMLValue(a.id)}" type="button">Delete</button>
+          ` : ""}
+        </div>
+        <p style="margin:10px 0;color:#333;">${escapeHTMLValue(bodyText)}</p>
 
         ${attachment ? `
           ${image
             ? `<img src="${escapeHTMLValue(image)}" style="max-width:240px;display:block;margin:10px 0;border-radius:8px">`
-            : `<a href="${escapeHTMLValue(attachment)}" download class="btn sm">Download Attachment</a>`
+            : `<a href="${escapeHTMLValue(attachment)}" download class="btn sm" style="margin-top:10px;display:inline-block;">Download Attachment</a>`
           }
         ` : ``}
       </li>
     `);
   });
+
+  if (userCanEdit) {
+    al.querySelectorAll("[data-del-id]").forEach(btn => {
+      btn.addEventListener("click", () => deleteAnnouncement(btn.dataset.delId));
+    });
+  }
 }
 
 function renderHostelInfo(){
@@ -167,6 +256,130 @@ function renderHostelInfo(){
         ? `<strong>${escapeHTML(label)}:</strong>${escapeHTML(rest.join(":"))}`
         : escapeHTML(line);
     }).join("<br>");
+}
+
+// Modal handling
+const addAnnDialog = document.getElementById("addHostelAnnouncementDialog");
+const openAddBtn = document.getElementById("openAddHostel");
+const closeAnnBtn = document.getElementById("closeAddHostelAnn");
+const cancelAnnBtn = document.getElementById("cancelAddHostelAnn");
+const addAnnForm = document.getElementById("addHostelAnnouncementForm");
+const annStatusMsg = document.getElementById("hostelAnnStatus");
+const submitAnnBtn = document.getElementById("submitAddHostelAnn");
+
+const editInfoDialog = document.getElementById("editHostelInfoDialog");
+const openEditInfoBtn = document.getElementById("btnEditHostelInfo");
+const closeInfoBtn = document.getElementById("closeEditHostelInfo");
+const cancelInfoBtn = document.getElementById("cancelEditHostelInfo");
+const editInfoForm = document.getElementById("editHostelInfoForm");
+const infoStatusMsg = document.getElementById("hostelInfoStatus");
+const submitInfoBtn = document.getElementById("submitEditHostelInfo");
+
+if (openAddBtn && addAnnDialog) {
+  openAddBtn.addEventListener("click", () => {
+    if (!canEdit("hostel")) return;
+    addAnnForm.reset();
+    document.getElementById("hostelAnnBy").value = u?.name || "Hostel Coordinator";
+    annStatusMsg.textContent = "";
+    addAnnDialog.showModal();
+  });
+
+  if (closeAnnBtn) closeAnnBtn.addEventListener("click", () => addAnnDialog.close());
+  if (cancelAnnBtn) cancelAnnBtn.addEventListener("click", () => addAnnDialog.close());
+
+  addAnnForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!canEdit("hostel")) return;
+
+    const title = document.getElementById("hostelAnnHeading").value.trim();
+    const by = document.getElementById("hostelAnnBy").value.trim() || "Hostel Coordinator";
+    const body = document.getElementById("hostelAnnBody").value.trim();
+    const fileInput = document.getElementById("hostelAnnFile");
+
+    if (!title || !body) {
+      annStatusMsg.textContent = "Title and details are required.";
+      return;
+    }
+
+    submitAnnBtn.disabled = true;
+    annStatusMsg.textContent = "Posting notice...";
+
+    try {
+      let fileData = "";
+      if (fileInput.files && fileInput.files[0]) {
+        if (fileInput.files[0].size > 5 * 1024 * 1024) {
+          throw new Error("File attachment must be 5MB or smaller.");
+        }
+        fileData = await fileToDataURL(fileInput.files[0]);
+      }
+
+      const payload = {
+        title,
+        by,
+        body,
+        desc: body,
+        date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+        file: fileData,
+        batch: getEffectiveBatch()
+      };
+
+      await apiCreate(COLLECTION, payload);
+      await loadItems();
+      render();
+      addAnnDialog.close();
+    } catch (err) {
+      annStatusMsg.textContent = err.message || "Failed to post announcement.";
+    } finally {
+      submitAnnBtn.disabled = false;
+    }
+  });
+}
+
+if (openEditInfoBtn && editInfoDialog) {
+  openEditInfoBtn.addEventListener("click", () => {
+    if (!canEdit("hostel")) return;
+    const current = hostelInfo || DEFAULT_HOSTEL_INFO;
+    document.getElementById("hostelMenuInput").value = current.menu || DEFAULT_HOSTEL_INFO.menu;
+    document.getElementById("hostelContactInput").value = current.contact || DEFAULT_HOSTEL_INFO.contact;
+    infoStatusMsg.textContent = "";
+    editInfoDialog.showModal();
+  });
+
+  if (closeInfoBtn) closeInfoBtn.addEventListener("click", () => editInfoDialog.close());
+  if (cancelInfoBtn) cancelInfoBtn.addEventListener("click", () => editInfoDialog.close());
+
+  editInfoForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!canEdit("hostel")) return;
+
+    const menu = document.getElementById("hostelMenuInput").value.trim();
+    const contact = document.getElementById("hostelContactInput").value.trim();
+
+    if (!menu || !contact) {
+      infoStatusMsg.textContent = "Menu and contact details are required.";
+      return;
+    }
+
+    submitInfoBtn.disabled = true;
+    infoStatusMsg.textContent = "Saving changes...";
+
+    try {
+      const payload = {
+        menu,
+        contact,
+        batch: getEffectiveBatch()
+      };
+
+      await apiCreate(INFO_COLLECTION, payload);
+      await loadItems();
+      render();
+      editInfoDialog.close();
+    } catch (err) {
+      infoStatusMsg.textContent = err.message || "Failed to update hostel info.";
+    } finally {
+      submitInfoBtn.disabled = false;
+    }
+  });
 }
 
 loadItems().then(()=>{
