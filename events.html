@@ -13,19 +13,56 @@
 <script>
 const u = requireAuth();
 renderHeader("events.html");
+if (canEdit("events")) {
+    document.body.insertAdjacentHTML("beforeend", `
+        <button class="add-btn" id="openAddEvent" type="button" aria-label="Add Campus Event">+</button>
+    `);
+}
 </script>
 
 <section>
 <div class="container">
 
-  <h3>Events</h3>
-  <p class="lead">Fests, workshops & cultural nights.</p>
+  <h3>Events & Fests</h3>
+  <p class="lead">University fests, technical symposiums, workshops & cultural nights.</p>
 
-  <div id="eventForm"></div>
   <div class="grid cols-2" id="eventList"></div>
 
 </div>
 </section>
+
+<dialog class="portal-dialog" id="addEventDialog" aria-labelledby="addEventTitle">
+    <form class="portal-form" id="addEventForm">
+        <div class="portal-form-header">
+            <h3 id="addEventTitle">Add Campus Event</h3>
+            <button class="portal-close-btn" id="closeAddEvent" type="button" aria-label="Close">&times;</button>
+        </div>
+        <label for="eventTitle">Event Title
+            <input id="eventTitle" type="text" required placeholder="e.g. Annual Cultural Fest · AURA 2026" maxlength="100">
+        </label>
+        <label for="eventType">Category / Type
+            <select id="eventType" required>
+                <option value="Cultural Fest">Cultural Fest</option>
+                <option value="Technical Symposium">Technical Symposium</option>
+                <option value="Workshop / Seminar">Workshop / Seminar</option>
+                <option value="Hackathon">Hackathon</option>
+                <option value="Guest Lecture">Guest Lecture</option>
+                <option value="Celebration">Celebration</option>
+            </select>
+        </label>
+        <label for="eventDate">Date & Time
+            <input id="eventDate" type="text" required placeholder="e.g. 24th Oct 2026 · 10:00 AM - 5:00 PM" maxlength="80">
+        </label>
+        <label for="eventDesc">Description & Venue Details
+            <textarea id="eventDesc" required placeholder="Venue, schedule, registration links, guest details..." rows="4"></textarea>
+        </label>
+        <p class="portal-status" id="eventStatus" role="status" aria-live="polite"></p>
+        <div class="portal-form-actions">
+            <button class="btn sm" id="cancelAddEvent" type="button" style="background:#eee;color:#333;">Cancel</button>
+            <button class="btn sm" id="submitAddEvent" type="submit">Publish Event</button>
+        </div>
+    </form>
+</dialog>
 
 <script>
 const COLLECTION = "events";
@@ -38,26 +75,95 @@ async function loadData(){
 
 async function delEvent(id){
   if(!confirm("Delete this event?")) return;
-  await apiDelete(COLLECTION, id);
-  await loadData();
-  render();
+  try {
+    await apiDelete(COLLECTION, id);
+    await loadData();
+    render();
+  } catch(err) {
+    alert(err.message || "Failed to delete event.");
+  }
 }
 
 function render(){
   const box = document.getElementById("eventList");
   box.innerHTML = "";
 
+  if (events.length === 0) {
+    box.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;background:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+        <h4 style="color:#0b3d91;margin-bottom:10px;">No upcoming campus events</h4>
+        <p style="color:#666;">There are no active events or cultural fests scheduled right now.</p>
+        ${canEdit("events") ? `<p style="margin-top:10px;font-weight:600;color:#0b3d91;">Click the + button to create a new event.</p>` : ""}
+    </div>`;
+    return;
+  }
+
   const items = events.slice().reverse();
+  const editable = canEdit("events");
 
   items.forEach(e=>{
     box.insertAdjacentHTML("beforeend",`
-      <div class="card">
-        <span class="tag">${escapeHTMLValue(e.type)}</span>
-        <h4>${escapeHTMLValue(e.title)}</h4>
-        <small>${escapeHTMLValue(e.date)}</small>
-        <p style="margin-top:8px">${escapeHTMLValue(e.desc)}</p>
+      <div class="card" style="display:flex;flex-direction:column;justify-content:space-between;position:relative;">
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+            <span class="tag">${escapeHTMLValue(e.type || "Event")}</span>
+            ${editable ? `<button class="btn-card-del" onclick="delEvent('${escapeHTMLValue(e.id)}')">Delete</button>` : ""}
+          </div>
+          <h4 style="margin:4px 0;color:#0b3d91;font-size:19px;">${escapeHTMLValue(e.title)}</h4>
+          <small style="color:#777;display:block;margin-bottom:8px;">🗓️ ${escapeHTMLValue(e.date || "")}</small>
+          <p style="color:#555;font-size:14px;margin-top:8px;white-space:pre-wrap;">${escapeHTMLValue(e.desc || "")}</p>
+        </div>
       </div>
     `);
+  });
+}
+
+// Dialog bindings
+const openAddEvent = document.getElementById("openAddEvent");
+const addEventDialog = document.getElementById("addEventDialog");
+const addEventForm = document.getElementById("addEventForm");
+const eventStatus = document.getElementById("eventStatus");
+const submitAddEvent = document.getElementById("submitAddEvent");
+
+if (openAddEvent && addEventDialog) {
+  openAddEvent.addEventListener("click", () => {
+    addEventForm.reset();
+    eventStatus.textContent = "";
+    addEventDialog.showModal();
+  });
+
+  document.getElementById("closeAddEvent").addEventListener("click", () => addEventDialog.close());
+  document.getElementById("cancelAddEvent").addEventListener("click", () => addEventDialog.close());
+
+  addEventForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!canEdit("events")) return;
+
+    const title = document.getElementById("eventTitle").value.trim();
+    const type = document.getElementById("eventType").value;
+    const date = document.getElementById("eventDate").value.trim();
+    const desc = document.getElementById("eventDesc").value.trim();
+
+    if (!title || !date || !desc) return;
+
+    submitAddEvent.disabled = true;
+    eventStatus.textContent = "Publishing event...";
+
+    try {
+      await apiCreate(COLLECTION, {
+        title,
+        type,
+        date,
+        desc
+      });
+
+      await loadData();
+      render();
+      addEventDialog.close();
+    } catch (err) {
+      eventStatus.textContent = err.message || "Failed to publish event.";
+    } finally {
+      submitAddEvent.disabled = false;
+    }
   });
 }
 

@@ -37,6 +37,12 @@ document.addEventListener("DOMContentLoaded", ()=>{
     if(heading) heading.textContent = `Human Resource Development — Batch ${selectedBatch}`;
     if(subtitle) subtitle.textContent = `Workshops, training programs and soft-skill modules for ${selectedBatch} students.`;
 });
+
+if (canEdit("hrd")) {
+    document.body.insertAdjacentHTML("beforeend", `
+        <button class="add-btn" id="openAddHrd" type="button" aria-label="Add program" title="Add HRD Program">+</button>
+    `);
+}
 </script>
 
 <section>
@@ -44,10 +50,40 @@ document.addEventListener("DOMContentLoaded", ()=>{
     <h3>Human Resource Development</h3>
     <p class="lead">Workshops, training programs and soft-skill modules.</p>
 
-    <div id="hrdForm"></div>
     <div class="grid cols-3 hrd-grid" id="hrdList"></div>
 </div>
 </section>
+
+<dialog class="portal-dialog" id="addHrdDialog" aria-labelledby="addHrdTitle">
+    <form class="portal-form" id="addHrdForm">
+        <div class="portal-form-header">
+            <h3 id="addHrdTitle">Add HRD Program</h3>
+            <button class="portal-close-btn" id="closeAddHrd" type="button" aria-label="Close">&times;</button>
+        </div>
+        <label for="hrdTitle">Program Title *
+            <input id="hrdTitle" type="text" required maxlength="100" placeholder="e.g. Full Stack & Cloud Bootcamp">
+        </label>
+        <label for="hrdStatus">Status *
+            <select id="hrdStatus" required>
+                <option value="Upcoming">Upcoming</option>
+                <option value="Ongoing">Ongoing</option>
+                <option value="Active">Active</option>
+                <option value="Completed">Completed</option>
+            </select>
+        </label>
+        <label for="hrdSchedule">Schedule & Timings *
+            <input id="hrdSchedule" type="text" required maxlength="100" placeholder="e.g. Nov 1 - Nov 15 · 4:00 PM - 6:00 PM">
+        </label>
+        <label for="hrdDesc">Program Details & Objectives *
+            <textarea id="hrdDesc" required maxlength="500" placeholder="Describe workshop topics, venue, and speaker info..."></textarea>
+        </label>
+        <p class="portal-status" id="hrdStatusMsg" role="status" aria-live="polite"></p>
+        <div class="portal-form-actions">
+            <button class="btn sm ghost" id="cancelAddHrd" type="button">Cancel</button>
+            <button class="btn sm" id="submitAddHrd" type="submit">Add Program</button>
+        </div>
+    </form>
+</dialog>
 
 <script>
 const COLLECTION = "hrd_programs";
@@ -55,14 +91,19 @@ let programs = [];
 
 async function loadData(){
   const raw = await apiList(COLLECTION);
-  programs = raw.map(item => ({ id: item.id, ...item.data }));
+  programs = raw.map(item => ({ id: item.id, ...(item.data || item) }));
 }
 
 async function deleteProgram(id){
+    if(!canEdit("hrd")) return;
     if(!confirm("Delete this program?")) return;
-    await apiDelete(COLLECTION, id);
-    await loadData();
-    render();
+    try {
+        await apiDelete(COLLECTION, id);
+        await loadData();
+        render();
+    } catch (err) {
+        alert(err.message || "Failed to delete program.");
+    }
 }
 
 function render(){
@@ -70,25 +111,93 @@ function render(){
     list.innerHTML = "";
 
     const items = programs.slice().reverse();
+    const userCanEdit = canEdit("hrd");
 
     if(items.length === 0){
-      list.innerHTML = `<div class="empty">No HRD programs added yet.</div>`;
+      list.innerHTML = `<div class="empty" style="grid-column: 1 / -1;">No HRD programs added yet. ${userCanEdit ? "Click the gold <b>+</b> button to add one." : ""}</div>`;
       return;
     }
 
     items.forEach(p=>{
         list.insertAdjacentHTML("beforeend",`
-            <div class="card hrd-card">
-                <span class="tag">${escapeHTMLValue(p.status)}</span>
-                <h4>${escapeHTMLValue(p.title)}</h4>
-                <small>${escapeHTMLValue(p.schedule)}</small>
-                <p style="margin-top:10px">${escapeHTMLValue(p.desc)}</p>
+            <div class="card hrd-card" style="position:relative;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                    <span class="tag">${escapeHTMLValue(p.status || "Upcoming")}</span>
+                    ${userCanEdit ? `
+                        <button class="btn-card-del" data-del-id="${escapeHTMLValue(p.id)}" type="button">Delete</button>
+                    ` : ""}
+                </div>
+                <h4 style="margin-top:6px;">${escapeHTMLValue(p.title)}</h4>
+                <small style="color:#666;font-weight:600;display:block;margin:4px 0 8px;">📅 ${escapeHTMLValue(p.schedule)}</small>
+                <p style="margin-top:6px;color:#444;">${escapeHTMLValue(p.desc)}</p>
             </div>
         `);
     });
+
+    if (userCanEdit) {
+        list.querySelectorAll("[data-del-id]").forEach(btn => {
+            btn.addEventListener("click", () => deleteProgram(btn.dataset.delId));
+        });
+    }
 }
 
+// Modal handling
+const addDialog = document.getElementById("addHrdDialog");
+const openBtn = document.getElementById("openAddHrd");
+const closeBtn = document.getElementById("closeAddHrd");
+const cancelBtn = document.getElementById("cancelAddHrd");
+const addForm = document.getElementById("addHrdForm");
+const statusMsg = document.getElementById("hrdStatusMsg");
+const submitBtn = document.getElementById("submitAddHrd");
 
+if (openBtn && addDialog) {
+    openBtn.addEventListener("click", () => {
+        if (!canEdit("hrd")) return;
+        addForm.reset();
+        statusMsg.textContent = "";
+        addDialog.showModal();
+    });
+
+    if (closeBtn) closeBtn.addEventListener("click", () => addDialog.close());
+    if (cancelBtn) cancelBtn.addEventListener("click", () => addDialog.close());
+
+    addForm.addEventListener("submit", async e => {
+        e.preventDefault();
+        if (!canEdit("hrd")) return;
+
+        const title = document.getElementById("hrdTitle").value.trim();
+        const status = document.getElementById("hrdStatus").value;
+        const schedule = document.getElementById("hrdSchedule").value.trim();
+        const desc = document.getElementById("hrdDesc").value.trim();
+
+        if (!title || !schedule || !desc) {
+            statusMsg.textContent = "All fields are required.";
+            return;
+        }
+
+        submitBtn.disabled = true;
+        statusMsg.textContent = "Adding program...";
+
+        try {
+            const payload = {
+                title,
+                status,
+                schedule,
+                desc,
+                batch: getEffectiveBatch()
+            };
+
+            await apiCreate(COLLECTION, payload);
+            await loadData();
+            render();
+            addDialog.close();
+        } catch (err) {
+            statusMsg.textContent = err.message || "Failed to add HRD program.";
+        } finally {
+            submitBtn.disabled = false;
+        }
+    });
+}
 
 loadData().then(render).catch(err => alert(err.message));
 renderFooter();

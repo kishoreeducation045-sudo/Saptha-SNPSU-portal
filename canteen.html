@@ -90,26 +90,61 @@
 <script>
 const u = requireAuth();
 renderHeader("canteen.html");
+
+if (canEdit("canteen")) {
+    document.body.insertAdjacentHTML("beforeend", `
+        <button class="add-btn" id="openAddCanteen" type="button" aria-label="Edit canteen menu" title="Update Canteen Menu">+</button>
+    `);
+}
 </script>
 
 <section class="canteen-section">
     <div class="container">
 
-        <div class="canteen-hero">
-            <h1>Canteen</h1>
-            <p>Today's menu & contact details</p>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+            <div class="canteen-hero" style="margin-bottom:0;text-align:left;">
+                <h1>Canteen</h1>
+                <p style="margin:0;">Today's dining menu & contact details</p>
+            </div>
+            <script>
+                if (canEdit("canteen")) {
+                    document.write(`
+                        <button class="btn sm" id="btnEditCanteenTop" type="button" style="font-weight:bold;">⚙️ Edit Menu & Pricing</button>
+                    `);
+                }
+            </script>
         </div>
 
-        <div id="canteenEditForm"></div>
         <div class="grid cols-3 menu-grid" id="canteenMenu"></div>
 
         <div class="contact-card">
-            <h4>Contact</h4>
-            <p id="canteenContact"></p>
+            <h4>Contact & Timings</h4>
+            <p id="canteenContact" style="font-size:15px;color:#444;line-height:1.7;"></p>
         </div>
 
     </div>
 </section>
+
+<!-- Dialog: Edit Canteen Menu & Info -->
+<dialog class="portal-dialog" id="editCanteenDialog" aria-labelledby="canteenDialogTitle">
+  <form class="portal-form" id="editCanteenForm">
+    <div class="portal-form-header">
+      <h3 id="canteenDialogTitle">Update Canteen Menu & Pricing</h3>
+      <button class="portal-close-btn" id="closeEditCanteen" type="button" aria-label="Close">&times;</button>
+    </div>
+    <label for="canteenMenuInput">Menu Categories & Rates (Separate blocks with a blank line) *
+      <textarea id="canteenMenuInput" rows="10" required placeholder="Snacks&#10;Samosa - Rs 20&#10;Veg Puff - Rs 25&#10;&#10;Meals&#10;Full Meals - Rs 70&#10;Biryani - Rs 90"></textarea>
+    </label>
+    <label for="canteenContactInput">Canteen Manager Contact & Timings *
+      <input id="canteenContactInput" type="text" required maxlength="120" placeholder="Canteen Manager · 96XXX-XXXXX · Open 8 AM - 7 PM">
+    </label>
+    <p class="portal-status" id="canteenStatusMsg" role="status" aria-live="polite"></p>
+    <div class="portal-form-actions">
+      <button class="btn sm ghost" id="cancelEditCanteen" type="button">Cancel</button>
+      <button class="btn sm" id="submitEditCanteen" type="submit">Save Menu</button>
+    </div>
+  </form>
+</dialog>
 
 <script>
 const INFO_COLLECTION = "canteen_info";
@@ -140,7 +175,7 @@ function escapeHTML(value){
 async function loadCanteenInfo(){
     const items = await apiList(INFO_COLLECTION);
     const last = items[items.length - 1];
-    canteenInfo = last ? { id: last.id, ...last.data } : DEFAULT_CANTEEN_INFO;
+    canteenInfo = last ? { id: last.id, ...(last.data || last) } : DEFAULT_CANTEEN_INFO;
 }
 
 function parseMenu(menu){
@@ -154,13 +189,78 @@ function parseMenu(menu){
 function renderCanteen(){
     const info = canteenInfo || DEFAULT_CANTEEN_INFO;
     const menuText = info.menu || DEFAULT_CANTEEN_INFO.menu;
-    document.getElementById("canteenMenu").innerHTML = parseMenu(menuText).map(group => `
-        <div class="menu-card">
-            <h4>${escapeHTML(group.title)}</h4>
-            <small>${group.items.map(escapeHTML).join("<br>")}</small>
-        </div>
-    `).join("");
+    const parsed = parseMenu(menuText);
+    
+    if (parsed.length === 0) {
+        document.getElementById("canteenMenu").innerHTML = `<div class="menu-card" style="grid-column: 1 / -1; text-align:center;">No menu items listed.</div>`;
+    } else {
+        document.getElementById("canteenMenu").innerHTML = parsed.map(group => `
+            <div class="menu-card">
+                <h4>${escapeHTML(group.title)}</h4>
+                <small>${group.items.map(escapeHTML).join("<br>")}</small>
+            </div>
+        `).join("");
+    }
     document.getElementById("canteenContact").textContent = info.contact || DEFAULT_CANTEEN_INFO.contact;
+}
+
+// Modal handling
+const editDialog = document.getElementById("editCanteenDialog");
+const openBtn = document.getElementById("openAddCanteen");
+const openTopBtn = document.getElementById("btnEditCanteenTop");
+const closeBtn = document.getElementById("closeEditCanteen");
+const cancelBtn = document.getElementById("cancelEditCanteen");
+const editForm = document.getElementById("editCanteenForm");
+const statusMsg = document.getElementById("canteenStatusMsg");
+const submitBtn = document.getElementById("submitEditCanteen");
+
+function openModal() {
+    if (!canEdit("canteen")) return;
+    const current = canteenInfo || DEFAULT_CANTEEN_INFO;
+    document.getElementById("canteenMenuInput").value = current.menu || DEFAULT_CANTEEN_INFO.menu;
+    document.getElementById("canteenContactInput").value = current.contact || DEFAULT_CANTEEN_INFO.contact;
+    statusMsg.textContent = "";
+    editDialog.showModal();
+}
+
+if (openBtn) openBtn.addEventListener("click", openModal);
+if (openTopBtn) openTopBtn.addEventListener("click", openModal);
+if (closeBtn) closeBtn.addEventListener("click", () => editDialog.close());
+if (cancelBtn) cancelBtn.addEventListener("click", () => editDialog.close());
+
+if (editForm) {
+    editForm.addEventListener("submit", async e => {
+        e.preventDefault();
+        if (!canEdit("canteen")) return;
+
+        const menu = document.getElementById("canteenMenuInput").value.trim();
+        const contact = document.getElementById("canteenContactInput").value.trim();
+
+        if (!menu || !contact) {
+            statusMsg.textContent = "Menu and contact details are required.";
+            return;
+        }
+
+        submitBtn.disabled = true;
+        statusMsg.textContent = "Updating canteen menu...";
+
+        try {
+            const payload = {
+                menu,
+                contact,
+                batch: getEffectiveBatch()
+            };
+
+            await apiCreate(INFO_COLLECTION, payload);
+            await loadCanteenInfo();
+            renderCanteen();
+            editDialog.close();
+        } catch (err) {
+            statusMsg.textContent = err.message || "Failed to update canteen menu.";
+        } finally {
+            submitBtn.disabled = false;
+        }
+    });
 }
 
 loadCanteenInfo().then(()=>{
