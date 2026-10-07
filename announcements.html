@@ -97,6 +97,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(heading) heading.textContent = `Department Announcements — Batch ${selectedBatch}`;
   if(subtitle) subtitle.textContent = `Latest verified updates for ${selectedBatch} batch students.`;
 });
+
+if (canEdit("announcements")) {
+  document.body.insertAdjacentHTML("beforeend", `
+    <button class="add-btn" id="openAddAnnouncement" type="button" aria-label="Add announcement" title="Post New Announcement">+</button>
+  `);
+}
 </script>
 
 <section class="announce-section">
@@ -107,11 +113,36 @@ document.addEventListener('DOMContentLoaded', ()=>{
       <p>Latest verified updates from directors</p>
   </div>
 
-  <div id="coordForm"></div>
   <ul class="announcements-list" id="al"></ul>
 
 </div>
 </section>
+
+<dialog class="portal-dialog" id="addAnnouncementDialog" aria-labelledby="addAnnouncementTitle">
+  <form class="portal-form" id="addAnnouncementForm">
+    <div class="portal-form-header">
+      <h3 id="addAnnouncementTitle">Post New Announcement</h3>
+      <button class="portal-close-btn" id="closeAddAnnouncement" type="button" aria-label="Close">&times;</button>
+    </div>
+    <label for="annTitle">Title *
+      <input id="annTitle" type="text" required maxlength="120" placeholder="e.g. Mid-Term Examination Schedule">
+    </label>
+    <label for="annBy">Posted By *
+      <input id="annBy" type="text" required maxlength="80" value="Director">
+    </label>
+    <label for="annBody">Announcement Details *
+      <textarea id="annBody" required maxlength="1000" placeholder="Type announcement details here..."></textarea>
+    </label>
+    <label for="annFile">Optional Attachment (PDF / Image)
+      <input id="annFile" type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.txt">
+    </label>
+    <p class="portal-status" id="annStatus" role="status" aria-live="polite"></p>
+    <div class="portal-form-actions">
+      <button class="btn sm ghost" id="cancelAddAnnouncement" type="button">Cancel</button>
+      <button class="btn sm" id="submitAddAnnouncement" type="submit">Post Announcement</button>
+    </div>
+  </form>
+</dialog>
 
 <script>
 const COLLECTION = "announcements";
@@ -128,14 +159,19 @@ function fileToDataURL(file){
 
 async function loadAnnouncements(){
   const raw = await apiList(COLLECTION);
-  announcements = raw.map(item => ({ id: item.id, ...item.data }));
+  announcements = raw.map(item => ({ id: item.id, ...(item.data || item) }));
 }
 
 async function deleteAnnouncement(id){
+  if(!canEdit("announcements")) return;
   if(!confirm("Delete this announcement?")) return;
-  await apiDelete(COLLECTION, id);
-  await loadAnnouncements();
-  render();
+  try {
+    await apiDelete(COLLECTION, id);
+    await loadAnnouncements();
+    render();
+  } catch (err) {
+    alert(err.message || "Failed to delete announcement.");
+  }
 }
 
 function render(){
@@ -145,31 +181,114 @@ function render(){
   const items = announcements.slice().reverse();
 
   if(items.length === 0){
-    al.innerHTML = `<div class="empty">No announcements yet.</div>`;
+    al.innerHTML = `<div class="empty">No announcements yet. ${canEdit("announcements") ? "Click the gold <b>+</b> button to post one." : ""}</div>`;
     return;
   }
+
+  const userCanEdit = canEdit("announcements");
 
   items.forEach(a=>{
     const attachment = safeDataURL(a.file);
     const image = safeImageDataURL(attachment);
+    const bodyText = a.body || a.desc || "";
     al.insertAdjacentHTML("beforeend", `
-      <li class="card" style="padding:18px;margin-bottom:15px">
-        <h4>${escapeHTMLValue(a.title)}</h4>
-        <small>${escapeHTMLValue(a.date)} · ${escapeHTMLValue(a.by)}</small>
-        <p style="margin-top:10px">${escapeHTMLValue(a.body)}</p>
+      <li class="card" style="padding:18px;margin-bottom:15px;position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+          <div>
+            <h4>${escapeHTMLValue(a.title)}</h4>
+            <small>${escapeHTMLValue(a.date || new Date().toLocaleDateString())} · ${escapeHTMLValue(a.by || "Director")}</small>
+          </div>
+          ${userCanEdit ? `
+            <button class="btn-card-del" data-del-id="${escapeHTMLValue(a.id)}" type="button">Delete</button>
+          ` : ""}
+        </div>
+        <p style="margin-top:10px">${escapeHTMLValue(bodyText)}</p>
 
         ${attachment ? `
           ${image
-            ? `<img src="${escapeHTMLValue(image)}" style="max-width:220px;border-radius:10px;margin-top:10px">`
-            : `<a class="btn sm" href="${escapeHTMLValue(attachment)}" download>Download File</a>`
+            ? `<img src="${escapeHTMLValue(image)}" style="max-width:220px;border-radius:10px;margin-top:10px;display:block;">`
+            : `<a class="btn sm" href="${escapeHTMLValue(attachment)}" download style="margin-top:10px;display:inline-block;">Download Attachment</a>`
           }
         ` : ""}
       </li>
     `);
   });
+
+  if (userCanEdit) {
+    al.querySelectorAll("[data-del-id]").forEach(btn => {
+      btn.addEventListener("click", () => deleteAnnouncement(btn.dataset.delId));
+    });
+  }
 }
 
+// Modal handling
+const addDialog = document.getElementById("addAnnouncementDialog");
+const openBtn = document.getElementById("openAddAnnouncement");
+const closeBtn = document.getElementById("closeAddAnnouncement");
+const cancelBtn = document.getElementById("cancelAddAnnouncement");
+const addForm = document.getElementById("addAnnouncementForm");
+const annStatus = document.getElementById("annStatus");
+const submitBtn = document.getElementById("submitAddAnnouncement");
 
+if (openBtn && addDialog) {
+  openBtn.addEventListener("click", () => {
+    if (!canEdit("announcements")) return;
+    addForm.reset();
+    document.getElementById("annBy").value = u?.name || "Director";
+    annStatus.textContent = "";
+    addDialog.showModal();
+  });
+
+  if (closeBtn) closeBtn.addEventListener("click", () => addDialog.close());
+  if (cancelBtn) cancelBtn.addEventListener("click", () => addDialog.close());
+
+  addForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!canEdit("announcements")) return;
+
+    const title = document.getElementById("annTitle").value.trim();
+    const by = document.getElementById("annBy").value.trim() || (u?.name || "Director");
+    const body = document.getElementById("annBody").value.trim();
+    const fileInput = document.getElementById("annFile");
+    
+    if (!title || !body) {
+      annStatus.textContent = "Title and details are required.";
+      return;
+    }
+
+    submitBtn.disabled = true;
+    annStatus.textContent = "Posting announcement...";
+
+    try {
+      let fileData = "";
+      if (fileInput.files && fileInput.files[0]) {
+        if (fileInput.files[0].size > 5 * 1024 * 1024) {
+          throw new Error("File attachment must be 5MB or smaller.");
+        }
+        fileData = await fileToDataURL(fileInput.files[0]);
+      }
+
+      const payload = {
+        title,
+        by,
+        body,
+        desc: body,
+        date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+        file: fileData,
+        batch: getEffectiveBatch()
+      };
+
+      await apiCreate(COLLECTION, payload);
+      await loadAnnouncements();
+      render();
+      addDialog.close();
+    } catch (err) {
+      annStatus.textContent = err.message || "Failed to post announcement.";
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+}
 
 loadAnnouncements().then(render).catch(err => alert(err.message));
 renderFooter();

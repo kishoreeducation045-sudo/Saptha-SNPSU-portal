@@ -20,6 +20,11 @@ document.addEventListener("DOMContentLoaded", ()=>{
     if(heading) heading.textContent = `Placements — Batch ${selectedBatch}`;
     if(subtitle) subtitle.textContent = `Current drives & upcoming opportunities for ${selectedBatch} batch students.`;
 });
+if (canEdit("placements")) {
+    document.body.insertAdjacentHTML("beforeend", `
+        <button class="add-btn" id="openAddPlacement" type="button" aria-label="Add Placement Drive">+</button>
+    `);
+}
 </script>
 
 <section>
@@ -27,10 +32,42 @@ document.addEventListener("DOMContentLoaded", ()=>{
     <h3>Placements</h3>
     <p class="lead">Current drives & upcoming opportunities.</p>
 
-    <div id="placementForm"></div>
     <div class="grid cols-3" id="placementList"></div>
 </div>
 </section>
+
+<dialog class="portal-dialog" id="addPlacementDialog" aria-labelledby="addPlacementTitle">
+    <form class="portal-form" id="addPlacementForm">
+        <div class="portal-form-header">
+            <h3 id="addPlacementTitle">Add Placement Drive</h3>
+            <button class="portal-close-btn" id="closeAddPlacement" type="button" aria-label="Close">&times;</button>
+        </div>
+        <label for="pCompany">Company / Organization
+            <input id="pCompany" type="text" required placeholder="e.g. Infosys, TCS, Amazon" maxlength="80">
+        </label>
+        <label for="pRole">Job Role / Profile
+            <input id="pRole" type="text" required placeholder="e.g. Graduate Software Engineer" maxlength="80">
+        </label>
+        <label for="pStatus">Status Tag
+            <select id="pStatus" required>
+                <option value="Registration Open">Registration Open</option>
+                <option value="Upcoming Drive">Upcoming Drive</option>
+                <option value="Assessment Scheduled">Assessment Scheduled</option>
+                <option value="Interviews Active">Interviews Active</option>
+                <option value="Shortlist Announced">Shortlist Announced</option>
+                <option value="Drive Completed">Drive Completed</option>
+            </select>
+        </label>
+        <label for="pDetails">Eligibility & Drive Details
+            <textarea id="pDetails" required placeholder="Min CGPA, eligible branches, test dates, registration links..." rows="4"></textarea>
+        </label>
+        <p class="portal-status" id="placementStatus" role="status" aria-live="polite"></p>
+        <div class="portal-form-actions">
+            <button class="btn sm" id="cancelAddPlacement" type="button" style="background:#eee;color:#333;">Cancel</button>
+            <button class="btn sm" id="submitAddPlacement" type="submit">Publish Drive</button>
+        </div>
+    </form>
+</dialog>
 
 <script>
 const COLLECTION = "placements";
@@ -43,30 +80,98 @@ async function loadData(){
 
 async function delPlacement(id){
     if(!confirm("Delete this placement drive?")) return;
-    await apiDelete(COLLECTION, id);
-    await loadData();
-    render();
+    try {
+        await apiDelete(COLLECTION, id);
+        await loadData();
+        render();
+    } catch(err) {
+        alert(err.message || "Failed to delete placement drive.");
+    }
 }
 
 function render(){
     const box = document.getElementById("placementList");
     box.innerHTML = "";
 
+    if (placements.length === 0) {
+        box.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;background:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+            <h4 style="color:#0b3d91;margin-bottom:10px;">No placement drives posted yet</h4>
+            <p style="color:#666;">There are currently no active placement drives for this batch.</p>
+            ${canEdit("placements") ? `<p style="margin-top:10px;font-weight:600;color:#0b3d91;">Click the + button to post a new recruitment drive.</p>` : ""}
+        </div>`;
+        return;
+    }
+
     const items = placements.slice().reverse();
+    const editable = canEdit("placements");
 
     items.forEach(p=>{
         box.insertAdjacentHTML("beforeend",`
-            <div class="card">
-                <span class="tag">${escapeHTMLValue(p.status || "Drive")}</span>
-                <h4>${escapeHTMLValue(p.company || p.title || "Placement")}</h4>
-                <small>${escapeHTMLValue(p.details || p.desc || "")}</small>
-                ${p.role ? `<p style="margin-top:8px">${escapeHTMLValue(p.role)}</p>` : ""}
+            <div class="card" style="display:flex;flex-direction:column;justify-content:space-between;position:relative;">
+                <div>
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+                        <span class="tag">${escapeHTMLValue(p.status || "Drive")}</span>
+                        ${editable ? `<button class="btn-card-del" onclick="delPlacement('${escapeHTMLValue(p.id)}')">Delete</button>` : ""}
+                    </div>
+                    <h4 style="margin:4px 0;color:#0b3d91;">${escapeHTMLValue(p.company || p.title || "Placement")}</h4>
+                    ${p.role ? `<div style="font-weight:600;font-size:14px;color:#333;margin-bottom:6px;">${escapeHTMLValue(p.role)}</div>` : ""}
+                    <p style="color:#555;font-size:14px;margin-top:6px;white-space:pre-wrap;">${escapeHTMLValue(p.details || p.desc || "")}</p>
+                </div>
             </div>
         `);
     });
 }
 
+// Dialog bindings
+const openAddPlacement = document.getElementById("openAddPlacement");
+const addPlacementDialog = document.getElementById("addPlacementDialog");
+const addPlacementForm = document.getElementById("addPlacementForm");
+const placementStatus = document.getElementById("placementStatus");
+const submitAddPlacement = document.getElementById("submitAddPlacement");
 
+if (openAddPlacement && addPlacementDialog) {
+    openAddPlacement.addEventListener("click", () => {
+        addPlacementForm.reset();
+        placementStatus.textContent = "";
+        addPlacementDialog.showModal();
+    });
+
+    document.getElementById("closeAddPlacement").addEventListener("click", () => addPlacementDialog.close());
+    document.getElementById("cancelAddPlacement").addEventListener("click", () => addPlacementDialog.close());
+
+    addPlacementForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!canEdit("placements")) return;
+
+        const company = document.getElementById("pCompany").value.trim();
+        const role = document.getElementById("pRole").value.trim();
+        const status = document.getElementById("pStatus").value;
+        const details = document.getElementById("pDetails").value.trim();
+
+        if (!company || !role || !details) return;
+
+        submitAddPlacement.disabled = true;
+        placementStatus.textContent = "Publishing placement drive...";
+
+        try {
+            await apiCreate(COLLECTION, {
+                company,
+                title: company,
+                role,
+                status,
+                details
+            });
+
+            await loadData();
+            render();
+            addPlacementDialog.close();
+        } catch (err) {
+            placementStatus.textContent = err.message || "Failed to publish drive.";
+        } finally {
+            submitAddPlacement.disabled = false;
+        }
+    });
+}
 
 loadData().then(render).catch(err => alert(err.message));
 renderFooter();

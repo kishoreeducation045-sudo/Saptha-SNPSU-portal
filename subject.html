@@ -47,7 +47,7 @@
 <script>
 const u = requireAuth();
 renderHeader("departments.html");
-if (u?.role === "course_coordinator") {
+if (canEdit("departments")) {
   document.body.insertAdjacentHTML("beforeend", `
     <button class="add-btn" id="uploadOpen" type="button" aria-label="Upload notes or files">+</button>
   `);
@@ -260,7 +260,7 @@ const uploadStatus = document.getElementById("uploadStatus");
 const uploadSubmit = document.getElementById("uploadSubmit");
 let uploadSubjects = [];
 let uploadModules = [];
-if(u?.role === "course_coordinator" && moduleCreateOpen){
+if(canEdit("departments") && moduleCreateOpen){
   moduleCreateOpen.style.display = "inline-block";
 }
 
@@ -335,7 +335,7 @@ async function loadUploadChoices(){
 
 if(uploadButton){
   uploadButton.addEventListener("click", async () => {
-    if(u.role !== "course_coordinator") return;
+    if(!canEdit("departments")) return;
     uploadDialog.showModal();
     uploadStatus.textContent = "Loading existing subjects and modules...";
     try{
@@ -358,7 +358,7 @@ if(uploadButton){
 
   document.getElementById("uploadForm").addEventListener("submit", async event => {
     event.preventDefault();
-    if(u.role !== "course_coordinator") return;
+    if(!canEdit("departments")) return;
 
     const subjectIndex = uploadSubject.value === "" ? -1 : Number(uploadSubject.value);
     const selectedSubject = uploadSubjects[subjectIndex];
@@ -416,7 +416,7 @@ const moduleCreateSubmit = document.getElementById("moduleCreateSubmit");
 
 if(moduleCreateOpen){
   moduleCreateOpen.addEventListener("click", () => {
-    if(u?.role !== "course_coordinator") return;
+    if(!canEdit("departments")) return;
     moduleCreateForm.reset();
     moduleCreateStatus.textContent = "";
     moduleCreateDialog.showModal();
@@ -426,7 +426,7 @@ if(moduleCreateOpen){
   document.getElementById("moduleCreateCancel").addEventListener("click", () => moduleCreateDialog.close());
   moduleCreateForm.addEventListener("submit", async event => {
     event.preventDefault();
-    if(u?.role !== "course_coordinator") return;
+    if(!canEdit("departments")) return;
     const title = document.getElementById("newModuleTitle").value.trim();
     const desc = document.getElementById("newModuleDescription").value.trim();
     if(!currentSubjectRecord?.id){

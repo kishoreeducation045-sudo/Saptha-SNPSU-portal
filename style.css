@@ -652,3 +652,109 @@ footer.site .copy {
 .add-btn:hover {
     transform: scale(1.1);
 }
+
+/* Shared Modal / Dialog */
+.portal-dialog {
+    width: min(520px, calc(100% - 32px));
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    box-shadow: 0 18px 55px rgba(0,0,0,0.28);
+    background: #ffffff;
+}
+
+.portal-dialog::backdrop {
+    background: rgba(15, 25, 40, 0.55);
+    backdrop-filter: blur(2px);
+}
+
+.portal-form {
+    padding: 24px;
+    display: grid;
+    gap: 14px;
+}
+
+.portal-form-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 12px;
+}
+
+.portal-form-header h3 {
+    margin: 0;
+    color: var(--brand);
+    font-size: 20px;
+}
+
+.portal-close-btn {
+    border: 0;
+    background: transparent;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    color: #777;
+}
+
+.portal-close-btn:hover {
+    color: #222;
+}
+
+.portal-form label {
+    display: grid;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin: 0;
+}
+
+.portal-form input,
+.portal-form select,
+.portal-form textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccd2dc;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.portal-form textarea {
+    min-height: 90px;
+    resize: vertical;
+}
+
+.portal-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.portal-status {
+    min-height: 20px;
+    margin: 0;
+    color: #666;
+    font-size: 13px;
+}
+
+.btn-card-del {
+    background: #ffebee;
+    color: #c62828;
+    border: 1px solid #ffcdd2;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: 0.2s;
+}
+
+.btn-card-del:hover {
+    background: #ef5350;
+    color: #fff;
+}

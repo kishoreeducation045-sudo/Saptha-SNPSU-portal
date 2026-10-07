@@ -13,17 +13,54 @@
 <script>
 const u = requireAuth();
 renderHeader("sports.html");
+if (canEdit("sports")) {
+    document.body.insertAdjacentHTML("beforeend", `
+        <button class="add-btn" id="openAddSport" type="button" aria-label="Add Sport Activity or Fixture">+</button>
+    `);
+}
 </script>
 
 <section>
 <div class="container">
-    <h3>Sports</h3>
-    <p class="lead">Teams, fixtures & registrations.</p>
+    <h3>Sports & Athletics</h3>
+    <p class="lead">University teams, tournament fixtures, selection trials & training schedules.</p>
 
-    <div id="sportsForm"></div>
     <div class="grid cols-3" id="sportsList"></div>
 </div>
 </section>
+
+<dialog class="portal-dialog" id="addSportDialog" aria-labelledby="addSportTitle">
+    <form class="portal-form" id="addSportForm">
+        <div class="portal-form-header">
+            <h3 id="addSportTitle">Add Sports Event / Fixture</h3>
+            <button class="portal-close-btn" id="closeAddSport" type="button" aria-label="Close">&times;</button>
+        </div>
+        <label for="sportName">Sport / Tournament Title
+            <input id="sportName" type="text" required placeholder="e.g. Inter-Department Football Cup" maxlength="80">
+        </label>
+        <label for="sportCategory">Category / Sport Type
+            <select id="sportCategory" required>
+                <option value="Tournament">Tournament</option>
+                <option value="Selection Trials">Selection Trials</option>
+                <option value="Practice / Training">Practice / Training</option>
+                <option value="Indoor Games">Indoor Games</option>
+                <option value="Outdoor Sports">Outdoor Sports</option>
+                <option value="Athletics">Athletics</option>
+            </select>
+        </label>
+        <label for="sportDetails">Schedule, Venue & Timing
+            <input id="sportDetails" type="text" required placeholder="e.g. 15th Nov · 4:30 PM · University Sports Complex" maxlength="120">
+        </label>
+        <label for="sportExtra">Instructions & Coordinator Contact
+            <textarea id="sportExtra" placeholder="Registration rules, required gear, contact person phone/email..." rows="3"></textarea>
+        </label>
+        <p class="portal-status" id="sportStatus" role="status" aria-live="polite"></p>
+        <div class="portal-form-actions">
+            <button class="btn sm" id="cancelAddSport" type="button" style="background:#eee;color:#333;">Cancel</button>
+            <button class="btn sm" id="submitAddSport" type="submit">Publish Fixture</button>
+        </div>
+    </form>
+</dialog>
 
 <script>
 const COLLECTION = "sports";
@@ -36,25 +73,95 @@ async function loadData(){
 
 async function delSport(id){
     if(!confirm("Delete this sport activity?")) return;
-    await apiDelete(COLLECTION, id);
-    await loadData();
-    render();
+    try {
+        await apiDelete(COLLECTION, id);
+        await loadData();
+        render();
+    } catch(err) {
+        alert(err.message || "Failed to delete sport item.");
+    }
 }
 
 function render(){
     const box = document.getElementById("sportsList");
     box.innerHTML = "";
 
+    if (sportsItems.length === 0) {
+        box.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;background:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+            <h4 style="color:#0b3d91;margin-bottom:10px;">No sports events or fixtures posted</h4>
+            <p style="color:#666;">Check back later for university sports schedules and team announcements.</p>
+            ${canEdit("sports") ? `<p style="margin-top:10px;font-weight:600;color:#0b3d91;">Click the + button to add a sport fixture or trial.</p>` : ""}
+        </div>`;
+        return;
+    }
+
     const items = sportsItems.slice().reverse();
+    const editable = canEdit("sports");
 
     items.forEach(s=>{
         box.insertAdjacentHTML("beforeend",`
-            <div class="card">
-                <h4>${escapeHTMLValue(s.sport)}</h4>
-                <small>${escapeHTMLValue(s.details)}</small>
-                <p style="margin-top:8px">${escapeHTMLValue(s.extra)}</p>
+            <div class="card" style="display:flex;flex-direction:column;justify-content:space-between;position:relative;">
+                <div>
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+                        <span class="tag">${escapeHTMLValue(s.category || "Sports")}</span>
+                        ${editable ? `<button class="btn-card-del" onclick="delSport('${escapeHTMLValue(s.id)}')">Delete</button>` : ""}
+                    </div>
+                    <h4 style="margin:4px 0;color:#0b3d91;">${escapeHTMLValue(s.sport || "Sport Event")}</h4>
+                    <div style="color:#555;font-size:14px;margin-top:6px;font-weight:500;">📍 ${escapeHTMLValue(s.details || "")}</div>
+                    ${s.extra ? `<p style="color:#666;font-size:13px;margin-top:8px;white-space:pre-wrap;">${escapeHTMLValue(s.extra)}</p>` : ""}
+                </div>
             </div>
         `);
+    });
+}
+
+// Dialog bindings
+const openAddSport = document.getElementById("openAddSport");
+const addSportDialog = document.getElementById("addSportDialog");
+const addSportForm = document.getElementById("addSportForm");
+const sportStatus = document.getElementById("sportStatus");
+const submitAddSport = document.getElementById("submitAddSport");
+
+if (openAddSport && addSportDialog) {
+    openAddSport.addEventListener("click", () => {
+        addSportForm.reset();
+        sportStatus.textContent = "";
+        addSportDialog.showModal();
+    });
+
+    document.getElementById("closeAddSport").addEventListener("click", () => addSportDialog.close());
+    document.getElementById("cancelAddSport").addEventListener("click", () => addSportDialog.close());
+
+    addSportForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!canEdit("sports")) return;
+
+        const sport = document.getElementById("sportName").value.trim();
+        const category = document.getElementById("sportCategory").value;
+        const details = document.getElementById("sportDetails").value.trim();
+        const extra = document.getElementById("sportExtra").value.trim();
+
+        if (!sport || !details) return;
+
+        submitAddSport.disabled = true;
+        sportStatus.textContent = "Publishing fixture...";
+
+        try {
+            await apiCreate(COLLECTION, {
+                sport,
+                category,
+                details,
+                extra
+            });
+
+            await loadData();
+            render();
+            addSportDialog.close();
+        } catch (err) {
+            sportStatus.textContent = err.message || "Failed to publish sport fixture.";
+        } finally {
+            submitAddSport.disabled = false;
+        }
     });
 }
 
